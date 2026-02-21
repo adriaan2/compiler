@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris Clone</title>
+    <style>
+        body {
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .game-info {
+            width: 200px;
+            text-align: left;
+        }
+
+        #game-board {
+            width: 300px;
+            height: 600px;
+            background-color: #222;
+            border: 4px solid #444;
+            display: grid;
+            grid-template-rows: repeat(20, 1fr);
+            grid-template-columns: repeat(10, 1fr);
+        }
+
+        .cell {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #next-piece-display {
+            width: 100px;
+            height: 100px;
+            background-color: #222;
+            margin-top: 10px;
+            display: grid;
+            grid-template-rows: repeat(4, 1fr);
+            grid-template-columns: repeat(4, 1fr);
+        }
+
+        button {
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .controls {
+            margin-top: 20px;
+            background-color: #ddd;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .controls p {
+            margin: 5px 0;
+        }
+
+        /* Tetromino colors */
+        .I {
+            background-color: cyan;
+        }
+
+        .J {
+            background-color: blue;
+        }
+
+        .L {
+            background-color: orange;
+        }
+
+        .O {
+            background-color: yellow;
+        }
+
+        .S {
+            background-color: green;
+        }
+
+        .T {
+            background-color: purple;
+        }
+
+        .Z {
+            background-color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Tetris Clone</h1>
+    <div class="container">
+        <div class="game-info">
+            <div class="score">Score: <span id="score">0</span></div>
+            <div class="level">Level: <span id="level">1</span></div>
+            <div class="next-piece">
+                <h2>Next Piece</h2>
+                <div id="next-piece-display"></div>
+            </div>
+            <button id="start-button">Start Game</button>
+            <div class="controls">
+                <p>Controls:</p>
+                <p>← → : Move left/right</p>
+                <p>↑ : Rotate</p>
+                <p>↓ : Soft drop</p>
+                <p>Space : Hard drop</p>
+                <p>P : Pause</p>
+            </div>
+        </div>
+        <div id="game-board"></div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Game constants
+            const ROWS = 20;
+            const COLS = 10;
+            const EMPTY = 'empty';
+            
+            // The Tetromino shapes
+            const SHAPES = {
+                I: [
+                    [0, 0, 0, 0],
+                    [1, 1, 1, 1],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0]
+                ],
+                J: [
+                    [1, 0, 0],
+                    [1, 1, 1],
+                    [0, 0, 0]
+                ],
+                L: [
+                    [0, 0, 1],
+                    [1, 1, 1],
+                    [0, 0, 0]
+                ],
+                O: [
+                    [1, 1],
+                    [1, 1]
+                ],
+                S: [
+                    [0, 1, 1],
+                    [1, 1, 0],
+                    [0, 0, 0]
+                ],
+                T: [
+                    [0, 1, 0],
+                    [1, 1, 1],
+                    [0, 0, 0]
+                ],
+                Z: [
+                    [1, 1, 0],
+                    [0, 1, 1],
+                    [0, 0, 0]
+                ]
+            };
+            
+            // Game variables
+            let board = [];
+            let currentPiece = null;
+            let nextPiece = null;
+            let score = 0;
+            let level = 1;
+            let gameOver = false;
+            let isPaused = true;
+            let dropInterval = null;
+            let dropSpeed = 1000; // Start with 1 second per drop
+            
+            const gameBoard = document.getElementById('game-board');
+            const scoreDisplay = document.getElementById('score');
+            const levelDisplay = document.getElementById('level');
+            const startButton = document.getElementById('start-button');
+            const nextPieceDisplay = document.getElementById('next-piece-display');
+            
+            // Initialize the game
+            function init() {
+                // Create the game board
+                createBoard();
+                
+                // Set up event listeners
+                document.addEventListener('keydown', handleKeyPress);
+                startButton.addEventListener('click', togglePause);
+                
+                // Create the first piece
+                createNewPiece();
+                
+                // Draw the board
+                drawBoard();
+            }
+            
+            // Create an empty board
+            function createBoard() {
+                // Clear the game board element
+                gameBoard.innerHTML = '';
+                
+                // Initialize the board array
+                board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
+                
+                // Create the grid cells
+                for (let row = 0; row < ROWS; row++) {
+                    for (let col = 0; col < COLS; col++) {
+                        const cell = document.createElement('div');
+                        cell.classList.add('cell');
+                        cell.dataset.row = row;
+                        cell.dataset.col = col;
+                        gameBoard.appendChild(cell);
+                    }
+                }
+                
+                // Initialize the next piece display
+                nextPieceDisplay.innerHTML = '';
+                for (let row = 0; row < 4; row++) {
+                    for (let col = 0; col < 4; col++) {
+                        const cell = document.createElement('div');
+                        cell.classList.add('cell');
+                        nextPieceDisplay.appendChild(cell);
+                    }
+                }
+            }
+            
+            // Draw the current state of the board
+            function drawBoard() {
+                // Update the cells based on the board array
+                for (let row = 0; row < ROWS; row++) {
+                    for (let col = 0; col < COLS; col++) {
+                        const cellValue = board[row][col];
+                        const cellElement = gameBoard.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                        
+                        // Clear existing classes
+                        cellElement.className = 'cell';
+                        
+                        // Add the appropriate class based on the cell value
+                        if (cellValue !== EMPTY) {
+                            cellElement.classList.add(cellValue);
+                        }
+                    }
+                }
+                
+                // Draw the current piece
+                if (currentPiece) {
+                    const { shape, row, col, type } = currentPiece;
+                    
+                    for (let r = 0; r < shape.length; r++) {
+                        for (let c = 0; c < shape[r].length; c++) {
+                            if (shape[r][c] && row + r >= 0) {
+                                const cellElement = gameBoard.querySelector(`[data-row="${row + r}"][data-col="${col + c}"]`);
+                                if (cellElement) {
+                                    cellElement.classList.add(type);
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Draw the next piece
+                drawNextPiece();
+            }
+            
+            // Draw the next piece in the preview area
+            function drawNextPiece() {
+                if (!nextPiece) return;
+                
+                // Clear the next piece display
+                const cells = nextPieceDisplay.querySelectorAll('.cell');
+                cells.forEach(cell => {
+                    cell.className = 'cell';
+                });
+                
+                // Draw the next piece
+                const { shape, type } = nextPiece;
+                
+                // Center the piece in the 4x4 display
+                const offsetRow = (4 - shape.length) / 2;
+                const offsetCol = (4 - shape[0].length) / 2;
+                
+                for (let r = 0; r < shape.length; r++) {
+                    for (let c = 0; c < shape[r].length; c++) {
+                        if (shape[r][c]) {
+                            const index = Math.floor(offsetRow + r) * 4 + Math.floor(offsetCol + c);
+                            if (cells[index]) {
+                                cells[index].classList.add(type);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Create a new random piece
+            function createNewPiece() {
+                // If there's a next piece, make it the current piece
+                if (nextPiece) {
+                    currentPiece = nextPiece;
+                } else {
+                    // Create the very first piece
+                    const pieceTypes = Object.keys(SHAPES);
+                    const type = pieceTypes[Math.floor(Math.random() * pieceTypes.length)];
+                    currentPiece = {
+                        type,
+                        shape: SHAPES[type],
+                        row: -2, // Start above the board
+                        col: Math.floor((COLS - SHAPES[type][0].length) / 2)
+                    };
+                }
+                
+                // Create the next piece
+                const pieceTypes = Object.keys(SHAPES);
+                const type = pieceTypes[Math.floor(Math.random() * pieceTypes.length)];
+                nextPiece = {
+                    type,
+                    shape: SHAPES[type],
+                    row: -2,
+                    col: Math.floor((COLS - SHAPES[type][0].length) / 2)
+                };
+                
+                // Check if the game is over (piece can't be placed)
+                if (isCollision(currentPiece)) {
+                    gameOver = true;
+                    clearInterval(dropInterval);
+                    alert('Game Over! Your score: ' + score);
+                }
+            }
+            
+            // Check if the piece collides with walls or other pieces
+            function isCollision(piece) {
+                const { shape, row, col } = piece;
+                
+                for (let r = 0; r < shape.length; r++) {
+                    for (let c = 0; c < shape[r].length; c++) {
+                        if (shape[r][c]) {
+                            // Check if piece is outside the board or collides with locked pieces
+                            if (
+                                col + c < 0 || // Left wall
+                                col + c >= COLS || // Right wall
+                                row + r >= ROWS || // Bottom wall
+                                (row + r >= 0 && board[row + r][col + c] !== EMPTY) // Collision with existing pieces
+                            ) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+            
+            // Move the piece down
+            function moveDown() {
+                if (gameOver || isPaused) return;
+                
+                currentPiece.row++;
+                
+                if (isCollision(currentPiece)) {
+                    // Move back up
+                    currentPiece.row--;
+                    
+                    // Lock the piece in place
+                    lockPiece();
+                    
+                    // Check for completed lines
+                    clearLines();
+                    
+                    // Create a new piece
+                    createNewPiece();
+                }
+                
+                drawBoard();
+            }
+            
+            // Move the piece left
+            function moveLeft() {
+                if (gameOver || isPaused) return;
+                
+                currentPiece.col--;
+                
+                if (isCollision(currentPiece)) {
+                    currentPiece.col++;
+                }
+                
+                drawBoard();
+            }
+            
+            // Move the piece right
+            function moveRight() {
+                if (gameOver || isPaused) return;
+                
+                currentPiece.col++;
+                
+                if (isCollision(currentPiece)) {
+                    currentPiece.col--;
+                }
+                
+                drawBoard();
+            }
+            
+            // Rotate the piece
+            function rotatePiece() {
+                if (gameOver || isPaused) return;
+                
+                const oldShape = currentPiece.shape;
+                
+                // Create a new rotated shape (90 degrees clockwise)
+                const rotatedShape = [];
+                for (let c = 0; c < oldShape[0].length; c++) {
+                    const newRow = [];
+                    for (let r = oldShape.length - 1; r >= 0; r--) {
+                        newRow.push(oldShape[r][c]);
+                    }
+                    rotatedShape.push(newRow);
+                }
+                
+                // Save the old shape
+                const oldPiece = { ...currentPiece };
+                
+                // Update the shape
+                currentPiece.shape = rotatedShape;
+                
+                // Handle wall kicks (if rotation causes collision, try to adjust position)
+                if (isCollision(currentPiece)) {
+                    // Try moving left
+                    currentPiece.col--;
+                    if (isCollision(currentPiece)) {
+                        // Try moving right (twice from original position)
+                        currentPiece.col += 2;
+                        if (isCollision(currentPiece)) {
+                            // Try moving up
+                            currentPiece.col--;
+                            currentPiece.row--;
+                            if (isCollision(currentPiece)) {
+                                // Revert to the old piece
+                                Object.assign(currentPiece, oldPiece);
+                            }
+                        }
+                    }
+                }
+                
+                drawBoard();
+            }
+            
+            // Hard drop - move the piece all the way down
+            function hardDrop() {
+                if (gameOver || isPaused) return;
+                
+                while (!isCollision({ ...currentPiece, row: currentPiece.row + 1 })) {
+                    currentPiece.row++;
+                    score += 2; // 2 points per cell in hard drop
+                }
+                
+                // Lock the piece and continue
+                moveDown();
+            }
+            
+            // Lock the current piece onto the board
+            function lockPiece() {
+                const { shape, row, col, type } = currentPiece;
+                
+                for (let r = 0; r < shape.length; r++) {
+                    for (let c = 0; c < shape[r].length; c++) {
+                        if (shape[r][c] && row + r >= 0) {
+                            board[row + r][col + c] = type;
+                        }
+                    }
+                }
+            }
+            
+            // Clear completed lines
+            function clearLines() {
+                let linesCleared = 0;
+                
+                for (let row = ROWS - 1; row >= 0; row--) {
+                    if (board[row].every(cell => cell !== EMPTY)) {
+                        // Line is complete, remove it
+                        board.splice(row, 1);
+                        // Add a new empty line at the top
+                        board.unshift(Array(COLS).fill(EMPTY));
+                        linesCleared++;
+                        // Check the same row again (since we moved everything down)
+                        row++;
+                    }
+                }
+                
+                // Update score and level
+                if (linesCleared > 0) {
+                    // Scoring system: 100 * (linesCleared^2) points
+                    const points = 100 * Math.pow(linesCleared, 2);
+                    score += points;
+                    scoreDisplay.textContent = score;
+                    
+                    // Increase level every 10 lines
+                    const newLevel = Math.floor(score / 1000) + 1;
+                    if (newLevel > level) {
+                        level = newLevel;
+                        levelDisplay.textContent = level;
+                        
+                        // Increase speed with level
+                        dropSpeed = Math.max(100, 1000 - (level - 1) * 100);
+                        if (dropInterval) {
+                            clearInterval(dropInterval);
+                            dropInterval = setInterval(moveDown, dropSpeed);
+                        }
+                    }
+                }
+            }
+            
+            // Handle key presses
+            function handleKeyPress(event) {
+                if (gameOver) return;
+                
+                switch (event.key) {
+                    case 'ArrowLeft':
+                        moveLeft();
+                        break;
+                    case 'ArrowRight':
+                        moveRight();
+                        break;
+                    case 'ArrowDown':
+                        moveDown();
+                        break;
+                    case 'ArrowUp':
+                        rotatePiece();
+                        break;
+                    case ' ':
+                        hardDrop();
+                        break;
+                    case 'p':
+                    case 'P':
+                        togglePause();
+                        break;
+                }
+            }
+            
+            // Toggle pause state
+            function togglePause() {
+                isPaused = !isPaused;
+                
+                if (isPaused) {
+                    clearInterval(dropInterval);
+                    startButton.textContent = 'Resume';
+                } else {
+                    if (gameOver) {
+                        // Restart the game
+                        gameOver = false;
+                        score = 0;
+                        level = 1;
+                        scoreDisplay.textContent = score;
+                        levelDisplay.textContent = level;
+                        dropSpeed = 1000;
+                        createBoard();
+                        createNewPiece();
+                    }
+                    
+                    dropInterval = setInterval(moveDown, dropSpeed);
+                    startButton.textContent = 'Pause';
+                }
+            }
+            
+            // Initialize the game
+            init();
+        });
+    </script>
+</body>
+</html>

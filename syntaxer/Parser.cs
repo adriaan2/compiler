@@ -1,0 +1,85 @@
+public class Parser
+{
+    List<string> _diagnostics=new();
+   public IEnumerable<string> Diagnostics=> _diagnostics;
+    int _position=0;
+    public int Position =>_position;
+    readonly Syntaxtoken[] _tokens;
+    public Parser(string Text)
+    { 
+        Lexer lexer=new Lexer(Text);
+        Syntaxtoken syntaxtoken;
+        List<Syntaxtoken> tokens =new();
+        do
+        {
+             syntaxtoken= lexer.Nextoken();
+             if (syntaxtoken.Kind!=SyntaxKind.whitespaceToken&& syntaxtoken.Kind!=SyntaxKind.badtoken)
+             {
+                tokens.Add(syntaxtoken);
+             }
+
+        } while (syntaxtoken.Kind!=SyntaxKind.endoffiletoken);
+        _diagnostics.AddRange(lexer.Diagnostics);
+        _tokens=tokens.ToArray();
+
+    }
+    private Syntaxtoken Peek(int offset)
+    {
+        var index = _position + offset;
+        if (index >= _tokens.Length)
+            return _tokens[_tokens.Length - 1];
+        return _tokens[index];
+        
+    }
+    private Syntaxtoken Nexttoken()
+    {
+        var current=Current;
+        _position++;
+        return current;
+    }
+    private Syntaxtoken Current => Peek(0);
+    private Syntaxtoken match(SyntaxKind kind)
+    {
+        if (Current.Kind==kind)
+                return Nexttoken();
+        _diagnostics.Add($"Error unexpected token {Current.Kind}");
+        return new Syntaxtoken(kind, Current.POsition, null, null);
+    }
+    public ExpressionSyntax parse()
+    {
+        return ParseBinaryExpression();
+    }
+
+    private ExpressionSyntax ParseBinaryExpression(int parentPrecedence = 0)
+    {
+        var left = ParsePrimaryexpression();
+
+        while (true)
+        {
+            var precedence = GetBinaryOperatorPrecedence(Current.Kind);
+            if (precedence == 0 || precedence <= parentPrecedence)
+                break;
+
+            var operatorToken = Nexttoken();
+            var right = ParseBinaryExpression(precedence);
+            left = new BynarySyntax(left, operatorToken, right);
+        }
+
+        return left;
+    }
+
+    private static int GetBinaryOperatorPrecedence(SyntaxKind kind)
+    {
+        if (kind == SyntaxKind.timestoken || kind == SyntaxKind.slashtoken)
+            return 2;
+        if (kind == SyntaxKind.plusToken || kind == SyntaxKind.minusToken)
+            return 1;
+        return 0;
+    }
+
+    private ExpressionSyntax ParsePrimaryexpression()
+    {
+        var numberToken =match(SyntaxKind.numberToken);
+        return new numberSyntax(numberToken);
+    }
+}
