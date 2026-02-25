@@ -52,7 +52,19 @@ public class Parser
 
     private ExpressionSyntax ParseBinaryExpression(int parentPrecedence = 0)
     {
-        var left = ParsePrimaryexpression();
+        ExpressionSyntax left;
+
+        var unaryOperatorPrecedence = GetUnaryOperatorPrecedence(Current.Kind);
+        if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence)
+        {
+            var operatorToken = Nexttoken();
+            var operand = ParseBinaryExpression(unaryOperatorPrecedence);
+            left = new UnarySyntax(operatorToken, operand);
+        }
+        else
+        {
+            left = ParsePrimaryexpression();
+        }
 
         while (true)
         {
@@ -77,8 +89,23 @@ public class Parser
         return 0;
     }
 
+    private static int GetUnaryOperatorPrecedence(SyntaxKind kind)
+    {
+        if (kind == SyntaxKind.plusToken || kind == SyntaxKind.minusToken)
+            return 3;
+        return 0;
+    }
+
     private ExpressionSyntax ParsePrimaryexpression()
     {
+        if (Current.Kind==SyntaxKind.openparen)
+        {
+            var left=Nexttoken();
+            var expression=ParseBinaryExpression();
+            var right=match(SyntaxKind.closedparen);
+            return new Parenthessese(left, expression,right);
+
+        }
         var numberToken =match(SyntaxKind.numberToken);
         return new numberSyntax(numberToken);
     }

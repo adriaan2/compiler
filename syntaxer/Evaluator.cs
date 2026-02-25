@@ -36,6 +36,26 @@ public class Evaluator
             }
         }
 
+        if (expression is UnarySyntax u)
+        {
+            var operand = evaluateexpressionroot(u.Operand);
+
+            switch (u.OperatorToken.Kind)
+            {
+                case SyntaxKind.plusToken:
+                    return operand;
+                case SyntaxKind.minusToken:
+                    return -operand;
+                default:
+                    throw new Exception($"Unexpected unary operator {u.OperatorToken.Kind}");
+            }
+        }
+
+        if (expression is Parenthessese p)
+        {
+            return evaluateexpressionroot(p.Expression);
+        }
+
       
 
         throw new Exception($"Unexpected node {expression.Kind}");

@@ -17,9 +17,9 @@ public enum SyntaxKind
     numberexpression,
     binaryexpression,
     timestoken,
-    errorexpression
-    
-}
+    errorexpression,
+    bracketexpression,
+    unaryexpression}
 
 public class Syntaxtoken: SyntaxNode
 {
@@ -74,6 +74,7 @@ sealed class numberSyntax : ExpressionSyntax
             OperatorToken = operatortoken;
             Right = right;
         }
+        
         public override SyntaxKind Kind => SyntaxKind.binaryexpression;
     
         public ExpressionSyntax Left { get; }
@@ -87,6 +88,25 @@ sealed class numberSyntax : ExpressionSyntax
     }
 
     }
+
+sealed class UnarySyntax : ExpressionSyntax
+{
+    public UnarySyntax(Syntaxtoken operatorToken, ExpressionSyntax operand)
+    {
+        OperatorToken = operatorToken;
+        Operand = operand;
+    }
+
+    public Syntaxtoken OperatorToken { get; }
+    public ExpressionSyntax Operand { get; }
+    public override SyntaxKind Kind => SyntaxKind.unaryexpression;
+
+    public override IEnumerable<SyntaxNode> getchildren()
+    {
+        yield return OperatorToken;
+        yield return Operand;
+    }
+}
 
 sealed class ErrorSyntax : ExpressionSyntax
 {

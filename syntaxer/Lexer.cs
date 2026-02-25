@@ -46,7 +46,7 @@ public class Lexer
 
             var length=_position-start;
             var text=_text.Substring(start,length);
-            if (            !int.TryParse(text,out var value ))
+            if (!int.TryParse(text,out var value ))
             {
                 
             _diagnostics.Add($"Number {_text} to big for int32'");

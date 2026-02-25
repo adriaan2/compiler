@@ -49,6 +49,7 @@
         return node.Kind switch
         {
             SyntaxKind.binaryexpression => "BinaryExpression",
+            SyntaxKind.unaryexpression => "UnaryExpression",
             SyntaxKind.numberexpression => "NumberExpression",
             SyntaxKind.numberToken => $"NumberToken {(node as Syntaxtoken)?.Value}",
             SyntaxKind.plusToken => "PlusToken",
