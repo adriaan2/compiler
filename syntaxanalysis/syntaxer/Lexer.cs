@@ -1,5 +1,8 @@
 using Microsoft.VisualBasic;
 
+namespace syntaxer;
+
+
 public class Lexer
 {
    private readonly string _text;
@@ -28,7 +31,7 @@ public class Lexer
     }
     
            
-    public Syntaxtoken Nextoken()
+    public Syntaxtoken Lex()
     {
         //  
         if (_position>= _text.Length )

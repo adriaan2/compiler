@@ -5,6 +5,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <RunTestsOnBuild>true</RunTestsOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,5 +13,11 @@
     <EmbeddedResource Remove="tests\**\*" />
     <None Remove="tests\**\*" />
   </ItemGroup>
+
+  <Target Name="RunTestsAfterBuild"
+          AfterTargets="Build"
+          Condition="'$(RunTestsOnBuild)' == 'true' and '$(SkipTestsOnBuild)' != 'true' and '$(DesignTimeBuild)' != 'true' and '$(VSTestSessionCorrelationId)' == ''">
+    <Exec Command='dotnet test "$(MSBuildProjectDirectory)\tests\test.Tests\test.Tests.csproj" -c $(Configuration) --nologo -p:SkipTestsOnBuild=true' />
+  </Target>
 
 </Project>

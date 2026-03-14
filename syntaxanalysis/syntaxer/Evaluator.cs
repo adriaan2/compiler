@@ -1,7 +1,9 @@
+namespace syntaxer;
+
 public class Evaluator
 {
-    readonly ExpressionSyntax _root;
-    public Evaluator(ExpressionSyntax root)
+    readonly LiteralExpressionsyntax _root;
+    public Evaluator(LiteralExpressionsyntax root)
     {
         _root=root;
     }
@@ -9,7 +11,7 @@ public class Evaluator
     {
         return evaluateexpressionroot(_root);
     }
-     int evaluateexpressionroot(ExpressionSyntax expression)
+     int evaluateexpressionroot(LiteralExpressionsyntax expression)
     {
         if (expression is numberSyntax n)
         {
@@ -62,3 +64,4 @@ public class Evaluator
     }
 
 }
+

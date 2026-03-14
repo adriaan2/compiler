@@ -1,4 +1,6 @@
-﻿public class Program
+﻿using syntaxer;
+
+public class Program
 {
     public static void Main()
     {
@@ -11,7 +13,7 @@
         if (string.IsNullOrWhiteSpace(line))
             return;
 
-        Parser parser = new(line);
+       syntaxer.Parser parser = new(line);
         var expression = parser.parse();
         PrettyPrint(expression);
         if (parser.Diagnostics.Any())
@@ -32,7 +34,7 @@
 
     public static void PrettyPrint(SyntaxNode node, string indent = "", bool isLast = true)
     {
-        var marker = indent == "" ? "" : (isLast ? "└──" : "├──");
+                var marker = indent == "" ? "" : (isLast ? "└──" : "├──");
         Console.WriteLine($"{indent}{marker}{GetNodeLabel(node)}");
 
         indent += indent == "" ? "    " : (isLast ? "    " : "│   ");
@@ -60,3 +62,7 @@
         };
     }
 }
+
+
+
+

@@ -1,3 +1,5 @@
+namespace syntaxer;
+
 public class Parser
 {
     List<string> _diagnostics=new();
@@ -12,7 +14,7 @@ public class Parser
         List<Syntaxtoken> tokens =new();
         do
         {
-             syntaxtoken= lexer.Nextoken();
+             syntaxtoken= lexer.Lex();
              if (syntaxtoken.Kind!=SyntaxKind.whitespaceToken&& syntaxtoken.Kind!=SyntaxKind.badtoken)
              {
                 tokens.Add(syntaxtoken);
@@ -45,17 +47,17 @@ public class Parser
         _diagnostics.Add($"Error unexpected token {Current.Kind}");
         return new Syntaxtoken(kind, Current.POsition, null, null);
     }
-    public ExpressionSyntax parse()
+    public LiteralExpressionsyntax parse()
     {
         return ParseBinaryExpression();
     }
 
-    private ExpressionSyntax ParseBinaryExpression(int parentPrecedence = 0)
+    private LiteralExpressionsyntax ParseBinaryExpression(int parentPrecedence = 0)
     {
-        ExpressionSyntax left;
+        LiteralExpressionsyntax left;
 
-        var unaryOperatorPrecedence = GetUnaryOperatorPrecedence(Current.Kind);
-        if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence)
+        var unaryOperatorPrecedence = Precedence.GetUnaryOperatorPrecedence(Current.Kind);
+        if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence > parentPrecedence)
         {
             var operatorToken = Nexttoken();
             var operand = ParseBinaryExpression(unaryOperatorPrecedence);
@@ -68,7 +70,7 @@ public class Parser
 
         while (true)
         {
-            var precedence = GetBinaryOperatorPrecedence(Current.Kind);
+            var precedence = Precedence.GetBinaryOperatorPrecedence(Current.Kind);
             if (precedence == 0 || precedence <= parentPrecedence)
                 break;
 
@@ -80,23 +82,9 @@ public class Parser
         return left;
     }
 
-    private static int GetBinaryOperatorPrecedence(SyntaxKind kind)
-    {
-        if (kind == SyntaxKind.timestoken || kind == SyntaxKind.slashtoken)
-            return 2;
-        if (kind == SyntaxKind.plusToken || kind == SyntaxKind.minusToken)
-            return 1;
-        return 0;
-    }
+   
 
-    private static int GetUnaryOperatorPrecedence(SyntaxKind kind)
-    {
-        if (kind == SyntaxKind.plusToken || kind == SyntaxKind.minusToken)
-            return 3;
-        return 0;
-    }
-
-    private ExpressionSyntax ParsePrimaryexpression()
+    private LiteralExpressionsyntax ParsePrimaryexpression()
     {
         if (Current.Kind==SyntaxKind.openparen)
         {
@@ -110,3 +98,4 @@ public class Parser
         return new numberSyntax(numberToken);
     }
 }
+

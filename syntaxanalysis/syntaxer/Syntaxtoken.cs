@@ -1,3 +1,5 @@
+namespace syntaxer;
+
 
 using System.Security;
 
@@ -48,11 +50,11 @@ public abstract class SyntaxNode
     public abstract SyntaxKind Kind { get; }
     public abstract IEnumerable<SyntaxNode> getchildren();
 }
-public abstract class ExpressionSyntax : SyntaxNode
+public abstract class LiteralExpressionsyntax : SyntaxNode
 {
 
 }
-sealed class numberSyntax : ExpressionSyntax
+sealed class numberSyntax : LiteralExpressionsyntax
 {
     public numberSyntax(Syntaxtoken token)
     {
@@ -66,9 +68,9 @@ sealed class numberSyntax : ExpressionSyntax
     }
 
 }
- sealed class BynarySyntax : ExpressionSyntax
+ sealed class BynarySyntax : LiteralExpressionsyntax
     {
-        public BynarySyntax(ExpressionSyntax left, Syntaxtoken operatortoken, ExpressionSyntax right)
+        public BynarySyntax(LiteralExpressionsyntax left, Syntaxtoken operatortoken, LiteralExpressionsyntax right)
         {
             Left = left;
             OperatorToken = operatortoken;
@@ -77,9 +79,9 @@ sealed class numberSyntax : ExpressionSyntax
         
         public override SyntaxKind Kind => SyntaxKind.binaryexpression;
     
-        public ExpressionSyntax Left { get; }
+        public LiteralExpressionsyntax Left { get; }
         public Syntaxtoken OperatorToken { get; }
-        public ExpressionSyntax Right { get; }
+        public LiteralExpressionsyntax Right { get; }
         public override IEnumerable<SyntaxNode> getchildren()
     {
         yield return Left;
@@ -89,26 +91,8 @@ sealed class numberSyntax : ExpressionSyntax
 
     }
 
-sealed class UnarySyntax : ExpressionSyntax
-{
-    public UnarySyntax(Syntaxtoken operatorToken, ExpressionSyntax operand)
-    {
-        OperatorToken = operatorToken;
-        Operand = operand;
-    }
 
-    public Syntaxtoken OperatorToken { get; }
-    public ExpressionSyntax Operand { get; }
-    public override SyntaxKind Kind => SyntaxKind.unaryexpression;
-
-    public override IEnumerable<SyntaxNode> getchildren()
-    {
-        yield return OperatorToken;
-        yield return Operand;
-    }
-}
-
-sealed class ErrorSyntax : ExpressionSyntax
+sealed class ErrorSyntax : LiteralExpressionsyntax
 {
     public ErrorSyntax(Syntaxtoken token)
     {
@@ -123,3 +107,4 @@ sealed class ErrorSyntax : ExpressionSyntax
         yield return Token;
     }
 }
+

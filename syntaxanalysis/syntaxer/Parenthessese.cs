@@ -1,8 +1,11 @@
 using System.Threading.Channels;
 
-sealed class Parenthessese:ExpressionSyntax
+namespace syntaxer;
+
+
+sealed class Parenthessese:LiteralExpressionsyntax
 {
-    public Parenthessese(Syntaxtoken openparenthesis, ExpressionSyntax expression, Syntaxtoken closeparenthesis )
+    public Parenthessese(Syntaxtoken openparenthesis, LiteralExpressionsyntax expression, Syntaxtoken closeparenthesis )
     {
         Openparenthesis=openparenthesis;
         Closeparenthesis=closeparenthesis;
@@ -11,7 +14,7 @@ sealed class Parenthessese:ExpressionSyntax
 
     public Syntaxtoken Openparenthesis { get;  }
     public Syntaxtoken Closeparenthesis { get; }
-    public ExpressionSyntax Expression { get; }
+    public LiteralExpressionsyntax Expression { get; }
 
     public override SyntaxKind Kind => SyntaxKind.bracketexpression;
 
@@ -22,3 +25,4 @@ sealed class Parenthessese:ExpressionSyntax
         yield return Closeparenthesis;
     }
 }
+
