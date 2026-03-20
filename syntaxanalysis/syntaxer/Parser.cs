@@ -94,8 +94,12 @@ public class Parser
             return new Parenthessese(left, expression,right);
 
         }
+        if (Current.Kind == SyntaxKind.trueKeyword || Current.Kind == SyntaxKind.falseKeyword)
+        {
+            var keywordToken = Nexttoken();
+            return new BooleanSyntax(keywordToken);
+        }
         var numberToken =match(SyntaxKind.numberToken);
         return new numberSyntax(numberToken);
     }
 }
-

@@ -6,9 +6,15 @@ using System.Security;
 public enum SyntaxKind
 {
     numberToken,
+    trueKeyword,
+    falseKeyword,
+    equalsEqualsToken,
     plusToken,
     minusToken,
     slashtoken,
+    bangToken,
+    ampersandAmpersandToken,
+    pipePipeToken,
     opencurly,
     closedcurly,
     openparen,
@@ -21,13 +27,14 @@ public enum SyntaxKind
     timestoken,
     errorexpression,
     bracketexpression,
-    unaryexpression}
+    unaryexpression,
+    booleanexpression}
 
 public class Syntaxtoken: SyntaxNode
 {
 
 
-    public Syntaxtoken(SyntaxKind kind, int position, string text, object value)
+    public Syntaxtoken(SyntaxKind kind, int position, string? text, object? value)
     {
         Kind = kind;
         POsition = position;
@@ -36,8 +43,8 @@ public class Syntaxtoken: SyntaxNode
     }
     public override SyntaxKind Kind { get; }
     public int POsition { get; }
-    public string Text { get; }
-    public object Value { get; }
+    public string? Text { get; }
+    public object? Value { get; }
 
     public override IEnumerable<SyntaxNode> getchildren()
     {
@@ -67,6 +74,21 @@ sealed class numberSyntax : LiteralExpressionsyntax
         yield return Token;
     }
 
+}
+sealed class BooleanSyntax : LiteralExpressionsyntax
+{
+    public BooleanSyntax(Syntaxtoken keywordToken)
+    {
+        KeywordToken = keywordToken;
+    }
+
+    public Syntaxtoken KeywordToken { get; }
+    public override SyntaxKind Kind => SyntaxKind.booleanexpression;
+
+    public override IEnumerable<SyntaxNode> getchildren()
+    {
+        yield return KeywordToken;
+    }
 }
  sealed class BynarySyntax : LiteralExpressionsyntax
     {

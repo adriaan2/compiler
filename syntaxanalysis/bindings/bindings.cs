@@ -13,13 +13,13 @@ using System;
     }
     internal sealed class Boundunaryexpression:Boundexpression
     {
-        public Boundunaryexpression(Boundnodekind operatorkind, Boundexpression operand)
+        public Boundunaryexpression(Boundunaryoperatorkind operatorkind, Boundexpression operand)
         {
             Operatorkind=operatorkind;
             Operand=operand;
         }
 
-        public Boundnodekind Operatorkind { get; }
+        public Boundunaryoperatorkind Operatorkind { get; }
         public Boundexpression Operand { get; }
 
         public override Type Type => Operand.Type;
@@ -40,20 +40,37 @@ using System;
 
         internal override Boundnodekind Boundnodekind => Boundnodekind.Numberexpression;
     }
+    internal sealed class BoundBooleanexpression : Boundexpression
+    {
+        public BoundBooleanexpression(bool value)
+        {
+            Value = value;
+        }
+
+        public bool Value { get; }
+
+        public override Type Type => typeof(bool);
+
+        internal override Boundnodekind Boundnodekind => Boundnodekind.Booleanexpression;
+    }
     internal sealed class BoundBinaryexpression : Boundexpression
     {
-        public BoundBinaryexpression(Boundexpression left, Boundnodekind operatorkind, Boundexpression right)
+        
+
+        public BoundBinaryexpression(Boundexpression left, BoundBinaryoperatorkind boundoperatorkind , Boundexpression right)
         {
             Left = left;
-            Operatorkind = operatorkind;
+            Boundoperatorkind = boundoperatorkind;
             Right = right;
         }
 
         public Boundexpression Left { get; }
-        public Boundnodekind Operatorkind { get; }
+       // public Boundnodekind Operatorkind { get; }
         public Boundexpression Right { get; }
 
-        public override Type Type => Left.Type;
+        public override Type Type => Boundoperatorkind == BoundBinaryoperatorkind.Equals ? typeof(bool) : Left.Type;
+
+        public BoundBinaryoperatorkind Boundoperatorkind { get; }
 
         internal override Boundnodekind Boundnodekind => Boundnodekind.Binaryexpression;
     }

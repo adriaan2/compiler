@@ -21,12 +21,26 @@ public class Program
             Console.ForegroundColor=ConsoleColor.Red;
             foreach (var item in parser.Diagnostics)
             {
-                System.Console.WriteLine($"badtoken at {parser.Position}");
+                System.Console.WriteLine(item);
             }
         }  
         else
         {
-            Evaluator evaluator=new(expression);
+            var binder = new Binder();
+            var boundExpression = binder.Bind(expression);
+
+            if (binder.Diagnostics.Any())
+            {
+                Console.ForegroundColor=ConsoleColor.Red;
+                foreach (var item in binder.Diagnostics)
+                {
+                    System.Console.WriteLine(item);
+                }
+
+                continue;
+            }
+
+            BoundEvaluator evaluator=new(boundExpression);
             var result=evaluator.Evaluate();
             System.Console.WriteLine(result);
         }
@@ -53,16 +67,20 @@ public class Program
             SyntaxKind.binaryexpression => "BinaryExpression",
             SyntaxKind.unaryexpression => "UnaryExpression",
             SyntaxKind.numberexpression => "NumberExpression",
+            SyntaxKind.booleanexpression => "BooleanExpression",
             SyntaxKind.numberToken => $"NumberToken {(node as Syntaxtoken)?.Value}",
+            SyntaxKind.trueKeyword => "TrueKeyword",
+            SyntaxKind.falseKeyword => "FalseKeyword",
+            SyntaxKind.equalsEqualsToken => "EqualsEqualsToken",
             SyntaxKind.plusToken => "PlusToken",
             SyntaxKind.minusToken => "MinusToken",
             SyntaxKind.timestoken => "StarToken",
             SyntaxKind.slashtoken => "SlashToken",
+            SyntaxKind.bangToken => "BangToken",
+            SyntaxKind.ampersandAmpersandToken => "AmpersandAmpersandToken",
+            SyntaxKind.pipePipeToken => "PipePipeToken",
             _ => node.Kind.ToString()
         };
     }
 }
-
-
-
 

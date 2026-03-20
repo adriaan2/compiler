@@ -4,11 +4,25 @@ internal enum Boundnodekind
     {
         Unaryexpression,
         Numberexpression,
-        Binaryexpression
+        Binaryexpression,
+        Booleanexpression
     }
 internal enum Boundunaryoperatorkind
     {
         Identity,
-        Negation
-    }}
+        Negation,
+        LogicalNegation
+    }
+ internal enum BoundBinaryoperatorkind
+    {
+        addition,
+        subtraction,
+        times,
+        division,
+        Equals,
+        LogicalAnd,
+        LogicalOr
+    }
+    
+    }
     

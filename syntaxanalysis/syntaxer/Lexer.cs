@@ -1,4 +1,3 @@
-using Microsoft.VisualBasic;
 
 namespace syntaxer;
 
@@ -24,6 +23,17 @@ public class Lexer
         }
 
     }
+    private char Lookahead
+    {
+        get
+        {
+            var index = _position + 1;
+            if (index >= _text.Length)
+                return '\0';
+
+            return _text[index];
+        }
+    }
     private void Next()
     {
         _position++;
@@ -37,6 +47,35 @@ public class Lexer
         if (_position>= _text.Length )
         {
             return new Syntaxtoken(SyntaxKind.endoffiletoken, _position, "\0" , null);
+        }
+        if (char.IsLetter(Current))
+        {
+            var start = _position;
+            while (char.IsLetter(Current))
+            {
+                Next();
+            }
+
+            var length = _position - start;
+            var text = _text.Substring(start, length);
+            var kind = text switch
+            {
+                "true" => SyntaxKind.trueKeyword,
+                "false" => SyntaxKind.falseKeyword,
+                _ => SyntaxKind.badtoken
+            };
+
+            if (kind == SyntaxKind.badtoken)
+                _diagnostics.Add($"error bad character input {text}");
+
+            object? value = kind switch
+            {
+                SyntaxKind.trueKeyword => true,
+                SyntaxKind.falseKeyword => false,
+                _ => null
+            };
+
+            return new Syntaxtoken(kind, start, text, value);
         }
         if (char.IsDigit(Current))
         {
@@ -78,6 +117,12 @@ public class Lexer
         return new Syntaxtoken(SyntaxKind.plusToken, _position++, "+", null);
                         
         }
+        else if (Current=='=' && Lookahead=='=')
+        {
+                    var position = _position;
+                    _position += 2;
+                    return new Syntaxtoken(SyntaxKind.equalsEqualsToken, position, "==", null);
+        }
         else if (Current=='-')
         {
                     return new Syntaxtoken(SyntaxKind.minusToken, _position++, "-", null);
@@ -103,9 +148,25 @@ public class Lexer
                     return new Syntaxtoken(SyntaxKind.timestoken, _position++, "*", null);
 
         }
+        else if (Current=='!')
+        {
+                    return new Syntaxtoken(SyntaxKind.bangToken, _position++, "!", null);
+        }
+        else if (Current=='&' && Lookahead=='&')
+        {
+                    var position = _position;
+                    _position += 2;
+                    return new Syntaxtoken(SyntaxKind.ampersandAmpersandToken, position, "&&", null);
+        }
+        else if (Current=='|' && Lookahead=='|')
+        {
+                    var position = _position;
+                    _position += 2;
+                    return new Syntaxtoken(SyntaxKind.pipePipeToken, position, "||", null);
+        }
         _diagnostics.Add($"error bad character input {Current}" );
         return new Syntaxtoken(SyntaxKind.badtoken, _position++, _text.Substring(_position-1,1),null );
-
+        
 
     }
 
