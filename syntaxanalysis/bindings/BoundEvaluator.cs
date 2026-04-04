@@ -3,10 +3,12 @@ using bindings;
 internal sealed class BoundEvaluator
 {
     private readonly Boundexpression _root;
+    private  readonly Dictionary<VariableSymbol, object> _variables;
 
-    public BoundEvaluator(Boundexpression root)
+    public BoundEvaluator(Boundexpression root, Dictionary<VariableSymbol, object> variables)
     {
         _root = root;
+        _variables = variables;
     }
 
     public object Evaluate()
@@ -14,7 +16,7 @@ internal sealed class BoundEvaluator
         return EvaluateExpression(_root);
     }
 
-    private static object EvaluateExpression(Boundexpression node)
+    private  object EvaluateExpression(Boundexpression node)
     {
         if (node is BoundNumberexpression number)
             return number.Value;
@@ -63,6 +65,28 @@ internal sealed class BoundEvaluator
                 default:
                     throw new Exception($"Unexpected binary operator {binary.Boundoperatorkind}");
             }
+        }
+
+        if (node is BoundVariableexpression variable)
+        {
+            if (_variables.TryGetValue(variable.Variable, out var value))
+                return value;
+
+            throw new Exception($"Variable '{variable.Variable.Name}' was not assigned.");
+        }
+
+        if (node is BoundAssignmentexpression assignment)
+        {
+            var value = EvaluateExpression(assignment.Expression);
+            _variables[assignment.Variable] = value;
+            return value;
+        }
+
+        if (node is BoundVariabledeclarationexpression declaration)
+        {
+            var value = EvaluateExpression(declaration.Initializer);
+            _variables[declaration.Variable] = value;
+            return value;
         }
 
         throw new Exception($"Unexpected bound node {node.Boundnodekind}");

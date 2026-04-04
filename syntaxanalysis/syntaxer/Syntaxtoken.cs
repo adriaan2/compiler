@@ -5,9 +5,14 @@ using System.Security;
 
 public enum SyntaxKind
 {
+    chartoken,
     numberToken,
+    identifierToken,
     trueKeyword,
     falseKeyword,
+    intKeyword,
+    boolKeyword,
+    equalsToken,
     equalsEqualsToken,
     plusToken,
     minusToken,
@@ -23,6 +28,9 @@ public enum SyntaxKind
     endoffiletoken,
     whitespaceToken,
     numberexpression,
+    nameexpression,
+    assignmentexpression,
+    variabledeclarationexpression,
     binaryexpression,
     timestoken,
     errorexpression,
@@ -88,6 +96,70 @@ sealed class BooleanSyntax : LiteralExpressionsyntax
     public override IEnumerable<SyntaxNode> getchildren()
     {
         yield return KeywordToken;
+    }
+}
+sealed class NameExpressionSyntax : LiteralExpressionsyntax
+{
+    public NameExpressionSyntax(Syntaxtoken identifierToken)
+    {
+        IdentifierToken = identifierToken;
+    }
+
+    public Syntaxtoken IdentifierToken { get; }
+    public override SyntaxKind Kind => SyntaxKind.nameexpression;
+
+    public override IEnumerable<SyntaxNode> getchildren()
+    {
+        yield return IdentifierToken;
+    }
+}
+
+sealed class AssignmentExpressionSyntax : LiteralExpressionsyntax
+{
+    public AssignmentExpressionSyntax(Syntaxtoken identifierToken, Syntaxtoken equalsToken, LiteralExpressionsyntax expression)
+    {
+        IdentifierToken = identifierToken;
+        EqualsToken = equalsToken;
+        Expression = expression;
+    }
+
+    public Syntaxtoken IdentifierToken { get; }
+    public Syntaxtoken EqualsToken { get; }
+    public LiteralExpressionsyntax Expression { get; }
+
+    public override SyntaxKind Kind => SyntaxKind.assignmentexpression;
+
+    public override IEnumerable<SyntaxNode> getchildren()
+    {
+        yield return IdentifierToken;
+        yield return EqualsToken;
+        yield return Expression;
+    }
+}
+
+sealed class VariableDeclarationSyntax : LiteralExpressionsyntax
+{
+    public VariableDeclarationSyntax(Syntaxtoken keyword, Syntaxtoken identifier, Syntaxtoken equalsToken, LiteralExpressionsyntax initializer)
+    {
+        Keyword = keyword;
+        Identifier = identifier;
+        EqualsToken = equalsToken;
+        Initializer = initializer;
+    }
+
+    public Syntaxtoken Keyword { get; }
+    public Syntaxtoken Identifier { get; }
+    public Syntaxtoken EqualsToken { get; }
+    public LiteralExpressionsyntax Initializer { get; }
+
+    public override SyntaxKind Kind => SyntaxKind.variabledeclarationexpression;
+
+    public override IEnumerable<SyntaxNode> getchildren()
+    {
+        yield return Keyword;
+        yield return Identifier;
+        yield return EqualsToken;
+        yield return Initializer;
     }
 }
  sealed class BynarySyntax : LiteralExpressionsyntax

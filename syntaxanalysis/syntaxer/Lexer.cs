@@ -62,11 +62,10 @@ public class Lexer
             {
                 "true" => SyntaxKind.trueKeyword,
                 "false" => SyntaxKind.falseKeyword,
-                _ => SyntaxKind.badtoken
+                "int" => SyntaxKind.intKeyword,
+                "bool" => SyntaxKind.boolKeyword,
+                _ => SyntaxKind.identifierToken
             };
-
-            if (kind == SyntaxKind.badtoken)
-                _diagnostics.Add($"error bad character input {text}");
 
             object? value = kind switch
             {
@@ -116,6 +115,10 @@ public class Lexer
         {
         return new Syntaxtoken(SyntaxKind.plusToken, _position++, "+", null);
                         
+        }
+        else if (Current=='=' && Lookahead!='=')
+        {
+            return new Syntaxtoken(SyntaxKind.equalsToken, _position++, "=", null);
         }
         else if (Current=='=' && Lookahead=='=')
         {

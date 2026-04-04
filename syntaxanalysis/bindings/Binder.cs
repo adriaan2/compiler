@@ -3,8 +3,13 @@ using bindings;
 using syntaxer;
 internal class Binder
     {
+        private readonly Dictionary<string, VariableSymbol> _variables;
         private readonly List<string> _diagnostocs=new();
         public IEnumerable<string> Diagnostics=>_diagnostocs;
+        public Binder(Dictionary<string, VariableSymbol> variables)
+        {
+            _variables = variables;
+        }
         public Boundexpression Bind(LiteralExpressionsyntax expressionsyntax)
     {
         switch (expressionsyntax.Kind)
@@ -20,6 +25,12 @@ internal class Binder
                     return Bindunarysyntax((UnarySyntax) expressionsyntax);
             case SyntaxKind.bracketexpression:
                     return Bindparenthesizedsyntax((Parenthessese)expressionsyntax);
+            case SyntaxKind.nameexpression:
+                    return Bindnameexpression((NameExpressionSyntax)expressionsyntax);
+            case SyntaxKind.assignmentexpression:
+                    return Bindassignmentexpression((AssignmentExpressionSyntax)expressionsyntax);
+            case SyntaxKind.variabledeclarationexpression:
+                    return Bindvariabledeclaration((VariableDeclarationSyntax)expressionsyntax);
 
             default:
              throw new Exception($"unkown syntax{expressionsyntax.Kind}");
@@ -42,6 +53,71 @@ internal class Binder
     private Boundexpression Bindparenthesizedsyntax(Parenthessese expressionsyntax)
     {
         return Bind(expressionsyntax.Expression);
+    }
+
+    private Boundexpression Bindnameexpression(NameExpressionSyntax expressionsyntax)
+    {
+        var name = expressionsyntax.IdentifierToken.Text ?? string.Empty;
+        if (!_variables.TryGetValue(name, out var variable))
+        {
+            _diagnostocs.Add($"Variable '{name}' does not exist.");
+            return new BoundNumberexpression(0);
+        }
+
+        return new BoundVariableexpression(variable);
+    }
+
+    private Boundexpression Bindassignmentexpression(AssignmentExpressionSyntax expressionsyntax)
+    {
+        var name = expressionsyntax.IdentifierToken.Text ?? string.Empty;
+        var boundExpression = Bind(expressionsyntax.Expression);
+
+        if (!_variables.TryGetValue(name, out var variable))
+        {
+            _diagnostocs.Add($"Variable '{name}' does not exist.");
+            return boundExpression;
+        }
+
+        if (variable.Type != boundExpression.Type)
+        {
+            _diagnostocs.Add($"Cannot assign value of type {boundExpression.Type.Name} to variable '{name}' of type {variable.Type.Name}.");
+            return boundExpression;
+        }
+
+        return new BoundAssignmentexpression(variable, boundExpression);
+    }
+
+    private Boundexpression Bindvariabledeclaration(VariableDeclarationSyntax expressionsyntax)
+    {
+        var name = expressionsyntax.Identifier.Text ?? string.Empty;
+        var initializer = Bind(expressionsyntax.Initializer);
+        var variableType = BindTypeClause(expressionsyntax.Keyword);
+
+        if (_variables.ContainsKey(name))
+        {
+            _diagnostocs.Add($"Variable '{name}' is already declared.");
+            return initializer;
+        }
+
+        if (initializer.Type != variableType)
+        {
+            _diagnostocs.Add($"Variable '{name}' must be of type {variableType.Name}.");
+            return initializer;
+        }
+
+        var variable = new VariableSymbol(name, variableType);
+        _variables.Add(name, variable);
+        return new BoundVariabledeclarationexpression(variable, initializer);
+    }
+
+    private static Type BindTypeClause(Syntaxtoken keywordToken)
+    {
+        return keywordToken.Kind switch
+        {
+            SyntaxKind.intKeyword => typeof(int),
+            SyntaxKind.boolKeyword => typeof(bool),
+            _ => throw new Exception($"Unexpected type keyword {keywordToken.Kind}")
+        };
     }
 
    

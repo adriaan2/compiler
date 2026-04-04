@@ -49,7 +49,40 @@ public class Parser
     }
     public LiteralExpressionsyntax parse()
     {
+        return ParseExpression();
+    }
+
+    private LiteralExpressionsyntax ParseExpression()
+    {
+        if (IsTypeKeyword(Current.Kind))
+            return ParseVariableDeclaration();
+
+        if (Current.Kind == SyntaxKind.identifierToken && Peek(1).Kind == SyntaxKind.equalsToken)
+            return ParseAssignmentExpression();
+
         return ParseBinaryExpression();
+    }
+
+    private LiteralExpressionsyntax ParseVariableDeclaration()
+    {
+        var keyword = Nexttoken();
+        var identifier = match(SyntaxKind.identifierToken);
+        var equals = match(SyntaxKind.equalsToken);
+        var initializer = ParseBinaryExpression();
+        return new VariableDeclarationSyntax(keyword, identifier, equals, initializer);
+    }
+
+    private static bool IsTypeKeyword(SyntaxKind kind)
+    {
+        return kind == SyntaxKind.intKeyword || kind == SyntaxKind.boolKeyword;
+    }
+
+    private LiteralExpressionsyntax ParseAssignmentExpression()
+    {
+        var identifier = match(SyntaxKind.identifierToken);
+        var equals = match(SyntaxKind.equalsToken);
+        var expression = ParseBinaryExpression();
+        return new AssignmentExpressionSyntax(identifier, equals, expression);
     }
 
     private LiteralExpressionsyntax ParseBinaryExpression(int parentPrecedence = 0)
@@ -98,6 +131,11 @@ public class Parser
         {
             var keywordToken = Nexttoken();
             return new BooleanSyntax(keywordToken);
+        }
+        if (Current.Kind == SyntaxKind.identifierToken)
+        {
+            var identifierToken = Nexttoken();
+            return new NameExpressionSyntax(identifierToken);
         }
         var numberToken =match(SyntaxKind.numberToken);
         return new numberSyntax(numberToken);

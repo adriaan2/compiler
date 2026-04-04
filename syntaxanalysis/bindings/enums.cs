@@ -5,7 +5,10 @@ internal enum Boundnodekind
         Unaryexpression,
         Numberexpression,
         Binaryexpression,
-        Booleanexpression
+        Booleanexpression,
+        Variableexpression,
+        Assignmentexpression,
+        Variabledeclarationexpression
     }
 internal enum Boundunaryoperatorkind
     {

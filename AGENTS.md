@@ -16,8 +16,9 @@ Files in `syntaxanalysis/syntaxer/` are responsible for lexical analysis, parsin
 Current syntax support includes:
 
 - Number literals
-- Binary operators: `+`, `-`, `*`, `/`
-- Unary operators: `+`, `-`
+- Boolean literals: `true`, `false`
+- Binary operators: `+`, `-`, `*`, `/`, `&&`, `||`, `==`
+- Unary operators: `+`, `-`, `!`
 - Parenthesized expressions
 
 Important syntax files:
@@ -36,10 +37,11 @@ Files in `syntaxanalysis/bindings/` are responsible for lowering syntax nodes in
 Current bound-node work includes:
 
 - `BoundNumberexpression`
+- `BoundBooleanexpression`
 - `BoundBinaryexpression`
 - `Boundunaryexpression`
 - Operator kind enums for unary and binary operations
-- `Binder` class that begins mapping syntax nodes into bound expressions
+- `Binder` class that maps syntax nodes into bound expressions and enforces basic type rules
 
 Important binding files:
 
@@ -48,14 +50,21 @@ Important binding files:
 - `syntaxanalysis/bindings/enums.cs`
 
 ## Current Status
-The AST is in place and is more advanced than the original parser milestone. The parser currently handles precedence, unary expressions, and parentheses.
+The AST is in place and is more advanced than the original parser milestone. The parser currently handles arithmetic, boolean literals, logical operators, equality, precedence, unary expressions, and parentheses.
 
 The bound syntax tree is in progress and is now part of the execution flow. The binder currently understands:
 
 - Number expressions
+- Boolean expressions
 - Binary expressions
 - Unary expressions
 - Parenthesized expressions
+
+The binder also performs basic semantic validation, including:
+
+- Arithmetic operators only for `int`
+- Logical operators only for `bool`
+- Equality checks for matching operand types such as `int == int` and `bool == bool`
 
 The current runtime path is:
 
@@ -63,24 +72,8 @@ The current runtime path is:
 2. Bind syntax nodes into bound expressions
 3. Evaluate the bound tree
 
-Remaining work is mostly about expanding semantics, diagnostics, and future language features rather than just basic AST support.
+Remaining work is mostly about expanding semantics, improving diagnostics, and adding future language features rather than just basic AST support.
 
-## Why The Bound Tree Is Necessary
-The syntax tree answers the question: "What did the user write?"
-
-The bound tree answers the question: "What does that code mean after we understand it?"
-
-That extra step is important because syntax nodes still contain parser-level details that are useful for reading source code but not ideal for semantic processing. A bound tree lets the compiler:
-
-- Remove syntax-only structure that no longer matters semantically, such as parentheses wrapping an expression
-- Convert raw tokens like `+`, `-`, `*`, `/` into explicit semantic operator kinds
-- Attach meaning and type information to expressions
-- Centralize semantic checks in one place instead of spreading them across the parser and evaluator
-- Give later stages a cleaner representation for evaluation, optimization, or code generation
-
-In this project, `Parenthessese` is a good example. Parentheses matter while parsing because they change precedence, but after binding the important part is just the inner expression. The bound tree keeps the meaning and drops the syntax noise.
-
-Another example is operators. In the syntax tree, a binary expression stores an operator token. In the bound tree, that becomes a semantic operator kind such as `addition` or `subtraction`. That makes evaluation simpler and prepares the project for future checks like unsupported operators or type mismatches.
 
 ## Preferred Direction
 When continuing work, prefer this pipeline:

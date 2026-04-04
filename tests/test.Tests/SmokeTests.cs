@@ -1,26 +1,57 @@
-using Xunit;
+using System.Collections.Generic;
+using bindings;
 using syntaxer;
+using Xunit;
+using Xunit.Sdk;
+
 namespace test.Tests;
 
 public class SmokeTests
 {
-    [Theory]
-    [InlineData("1+2", 3)]
-    [InlineData("7-4", 3)]
-    [InlineData("3*5", 15)]
-    [InlineData("8/2", 4)]
-    [InlineData("1+2*3", 7)]
-    [InlineData("(1+2)*3", 9)]
-    [InlineData("10-2-3", 5)]
-    [InlineData("-5+2", -3)]
-    [InlineData("+5", 5)]
-    [InlineData("-(2+3)", -5)]
-    [InlineData("12 / (2 * 3)", 2)]
-    public void Evaluate_ValidExpressions_ReturnsExpectedResult(string text, int expected)
+    public static TheoryData<EvaluationCase> ArithmeticCases => new()
     {
-        var result = EvaluateWithBinding(text);
+        new("Addition", "1+2", 3),
+        new("Subtraction", "7-4", 3),
+        new("Multiplication", "3*5", 15),
+        new("Division", "8/2", 4),
+        new("OperatorPrecedence", "1+2*3", 7),
+        new("Parentheses", "(1+2)*3", 9),
+        new("LeftAssociativeSubtraction", "10-2-3", 5),
+        new("UnaryPlusAndMinus", "-5+2", -3),
+        new("UnaryPlus", "+5", 5),
+        new("UnaryWithParentheses", "-(2+3)", -5),
+        new("NestedArithmetic", "12 / (2 * 3)", 2)
+    };
 
-        Assert.Equal(expected, result);
+    public static TheoryData<EvaluationCase> UnaryPrecedenceCases => new()
+    {
+        new("UnaryTimes", "-2*3", -6),
+        new("UnaryParenthesizedTimes", "-(2*3)", -6),
+        new("UnaryAndBinaryPrecedence", "-2+3*4", 10)
+    };
+
+    public static TheoryData<EvaluationCase> BooleanCases => new()
+    {
+        new("BooleanTrueLiteral", "true", true),
+        new("BooleanFalseLiteral", "false", false),
+        new("LogicalNot", "!false", true),
+        new("LogicalAnd", "true && false", false),
+        new("LogicalOr", "true || false", true),
+        new("LogicalPrecedence", "!false && true", true),
+        new("LogicalParentheses", "!(false || false)", true),
+        new("IntegerEqualityTrue", "1 == 1", true),
+        new("IntegerEqualityFalse", "1 == 2", false),
+        new("ArithmeticEquality", "1 + 2 == 3", true),
+        new("BooleanEqualityFalse", "true == false", false),
+        new("BooleanEqualityWithUnary", "true == !false", true),
+        new("EqualityBeforeLogicalAnd", "1 == 1 && true", true)
+    };
+
+    [Theory]
+    [MemberData(nameof(ArithmeticCases))]
+    public void Evaluate_ValidExpressions_ReturnsExpectedResult(EvaluationCase testCase)
+    {
+        AssertEvaluationMatches(testCase);
     }
 
     [Fact]
@@ -28,43 +59,61 @@ public class SmokeTests
     {
         var parser = new Parser("10/0");
         var syntax = parser.parse();
-        var binder = new Binder();
+        var binder = new Binder(new Dictionary<string, VariableSymbol>());
         var boundExpression = binder.Bind(syntax);
-        var evaluator = new BoundEvaluator(boundExpression);
+        var evaluator = new BoundEvaluator(boundExpression, new Dictionary<VariableSymbol, object>());
 
         Assert.Throws<DivideByZeroException>(() => evaluator.Evaluate());
     }
 
     [Theory]
-    [InlineData("-2*3", -6)]
-    [InlineData("-(2*3)", -6)]
-    [InlineData("-2+3*4", 10)]
-    public void Evaluate_UnaryAndBinaryMix_RespectsPrecedence(string text, int expected)
+    [MemberData(nameof(UnaryPrecedenceCases))]
+    public void Evaluate_UnaryAndBinaryMix_RespectsPrecedence(EvaluationCase testCase)
     {
-        var result = EvaluateWithBinding(text);
-
-        Assert.Equal(expected, result);
+        AssertEvaluationMatches(testCase);
     }
 
     [Theory]
-    [InlineData("true", true)]
-    [InlineData("false", false)]
-    [InlineData("!false", true)]
-    [InlineData("true && false", false)]
-    [InlineData("true || false", true)]
-    [InlineData("!false && true", true)]
-    [InlineData("!(false || false)", true)]
-    [InlineData("1 == 1", true)]
-    [InlineData("1 == 2", false)]
-    [InlineData("1 + 2 == 3", true)]
-    [InlineData("true == false", false)]
-    [InlineData("true == !false", true)]
-    [InlineData("1 == 1 && true", true)]
-    public void Evaluate_BooleanExpressions_ReturnExpectedResult(string text, bool expected)
+    [MemberData(nameof(BooleanCases))]
+    public void Evaluate_BooleanExpressions_ReturnExpectedResult(EvaluationCase testCase)
     {
-        var result = EvaluateWithBinding(text);
+        AssertEvaluationMatches(testCase);
+    }
 
-        Assert.Equal(expected, result);
+    [Fact]
+    public void Evaluate_BoolDeclaration_ReturnsBooleanValue()
+    {
+        var result = EvaluateWithBinding("bool b = true");
+
+        Assert.True(result is bool value && value);
+    }
+
+    [Fact]
+    public void Evaluate_BoolVariable_PersistsAcrossInputs()
+    {
+        var variables = new Dictionary<VariableSymbol, object>();
+        var variableSymbols = new Dictionary<string, VariableSymbol>();
+
+        var declarationResult = EvaluateWithBinding("bool c = false", variableSymbols, variables);
+        var readResult = EvaluateWithBinding("c", variableSymbols, variables);
+
+        Assert.False((bool)declarationResult);
+        Assert.False((bool)readResult);
+    }
+
+    [Fact]
+    public void Bind_BoolDeclarationWithIntInitializer_ReportsDiagnostic()
+    {
+        var parser = new Parser("bool b = 5");
+        var syntax = parser.parse();
+        var binder = new Binder(new Dictionary<string, VariableSymbol>());
+
+        _ = binder.Bind(syntax);
+
+        if (parser.Diagnostics.Any())
+            throw new XunitException($"Expected no parser diagnostics, got: {string.Join(", ", parser.Diagnostics)}");
+
+        Assert.Contains(binder.Diagnostics, diagnostic => diagnostic.Contains("must be of type Boolean"));
     }
 
     [Fact]
@@ -72,12 +121,15 @@ public class SmokeTests
     {
         var parser = new Parser("true + 1");
         var syntax = parser.parse();
-        var binder = new Binder();
+        var binder = new Binder(new Dictionary<string, VariableSymbol>());
 
         _ = binder.Bind(syntax);
 
-        Assert.Empty(parser.Diagnostics);
-        Assert.NotEmpty(binder.Diagnostics);
+        if (parser.Diagnostics.Any())
+            throw new XunitException($"Expected no parser diagnostics for 'true + 1', but got: {string.Join(", ", parser.Diagnostics)}");
+
+        if (!binder.Diagnostics.Any())
+            throw new XunitException("Expected a binder diagnostic for 'true + 1', but the binder reported none.");
     }
 
     [Fact]
@@ -85,27 +137,54 @@ public class SmokeTests
     {
         var parser = new Parser("1 == true");
         var syntax = parser.parse();
-        var binder = new Binder();
+        var binder = new Binder(new Dictionary<string, VariableSymbol>());
 
         _ = binder.Bind(syntax);
 
-        Assert.Empty(parser.Diagnostics);
-        Assert.NotEmpty(binder.Diagnostics);
+        if (parser.Diagnostics.Any())
+            throw new XunitException($"Expected no parser diagnostics for '1 == true', but got: {string.Join(", ", parser.Diagnostics)}");
+
+        if (!binder.Diagnostics.Any())
+            throw new XunitException("Expected a binder diagnostic for '1 == true', but the binder reported none.");
     }
 
-    private static object EvaluateWithBinding(string text)
+    private static object EvaluateWithBinding(
+        string text,
+        Dictionary<string, VariableSymbol>? variableSymbols = null,
+        Dictionary<VariableSymbol, object>? variables = null)
     {
         var parser = new Parser(text);
         var syntax = parser.parse();
 
-        Assert.Empty(parser.Diagnostics);
+        if (parser.Diagnostics.Any())
+            throw new XunitException($"Parser failed for '{text}' with diagnostics: {string.Join(", ", parser.Diagnostics)}");
 
-        var binder = new Binder();
+        variableSymbols ??= new Dictionary<string, VariableSymbol>();
+        variables ??= new Dictionary<VariableSymbol, object>();
+
+        var binder = new Binder(variableSymbols);
         var boundExpression = binder.Bind(syntax);
 
-        Assert.Empty(binder.Diagnostics);
+        if (binder.Diagnostics.Any())
+            throw new XunitException($"Binder failed for '{text}' with diagnostics: {string.Join(", ", binder.Diagnostics)}");
 
-        var evaluator = new BoundEvaluator(boundExpression);
+        var evaluator = new BoundEvaluator(boundExpression, variables);
         return evaluator.Evaluate();
+    }
+
+    private static void AssertEvaluationMatches(EvaluationCase testCase)
+    {
+        var result = EvaluateWithBinding(testCase.Text);
+
+        if (!Equals(testCase.Expected, result))
+        {
+            throw new XunitException(
+                $"Test case '{testCase.Name}' failed for expression '{testCase.Text}'. Expected '{testCase.Expected}' but got '{result}'.");
+        }
+    }
+
+    public sealed record EvaluationCase(string Name, string Text, object Expected)
+    {
+        public override string ToString() => $"{Name}: {Text}";
     }
 }

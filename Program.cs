@@ -1,10 +1,14 @@
-﻿using syntaxer;
+﻿using bindings;
+using System.Collections.Generic;
+using syntaxer;
 
 public class Program
 {
     public static void Main()
     {
         Console.ForegroundColor=ConsoleColor.White;
+        var variables = new Dictionary<VariableSymbol, object>();
+        var variableSymbols = new Dictionary<string, VariableSymbol>();
         while (true)
         {
             
@@ -26,7 +30,7 @@ public class Program
         }  
         else
         {
-            var binder = new Binder();
+            var binder = new Binder(variableSymbols);
             var boundExpression = binder.Bind(expression);
 
             if (binder.Diagnostics.Any())
@@ -40,7 +44,7 @@ public class Program
                 continue;
             }
 
-            BoundEvaluator evaluator=new(boundExpression);
+            BoundEvaluator evaluator=new(boundExpression, variables);
             var result=evaluator.Evaluate();
             System.Console.WriteLine(result);
         }
@@ -48,10 +52,10 @@ public class Program
 
     public static void PrettyPrint(SyntaxNode node, string indent = "", bool isLast = true)
     {
-                var marker = indent == "" ? "" : (isLast ? "└──" : "├──");
+                var marker = indent == "" ? "" : (isLast ? "+--" : "+--");
         Console.WriteLine($"{indent}{marker}{GetNodeLabel(node)}");
 
-        indent += indent == "" ? "    " : (isLast ? "    " : "│   ");
+        indent += indent == "" ? "    " : (isLast ? "    " : "¦   ");
 
         var children = node.getchildren().ToArray();
         for (int i = 0; i < children.Length; i++)
@@ -68,9 +72,16 @@ public class Program
             SyntaxKind.unaryexpression => "UnaryExpression",
             SyntaxKind.numberexpression => "NumberExpression",
             SyntaxKind.booleanexpression => "BooleanExpression",
+            SyntaxKind.nameexpression => "NameExpression",
+            SyntaxKind.assignmentexpression => "AssignmentExpression",
+            SyntaxKind.variabledeclarationexpression => "VariableDeclarationExpression",
             SyntaxKind.numberToken => $"NumberToken {(node as Syntaxtoken)?.Value}",
+            SyntaxKind.identifierToken => $"IdentifierToken {(node as Syntaxtoken)?.Text}",
             SyntaxKind.trueKeyword => "TrueKeyword",
             SyntaxKind.falseKeyword => "FalseKeyword",
+            SyntaxKind.intKeyword => "IntKeyword",
+            SyntaxKind.boolKeyword => "BoolKeyword",
+            SyntaxKind.equalsToken => "EqualsToken",
             SyntaxKind.equalsEqualsToken => "EqualsEqualsToken",
             SyntaxKind.plusToken => "PlusToken",
             SyntaxKind.minusToken => "MinusToken",
