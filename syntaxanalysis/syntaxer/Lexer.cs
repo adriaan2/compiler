@@ -60,6 +60,7 @@ public class Lexer
             var text = _text.Substring(start, length);
             var kind = text switch
             {
+                "char"=> SyntaxKind.charkeyword,
                 "true" => SyntaxKind.trueKeyword,
                 "false" => SyntaxKind.falseKeyword,
                 "int" => SyntaxKind.intKeyword,
@@ -167,7 +168,40 @@ public class Lexer
                     _position += 2;
                     return new Syntaxtoken(SyntaxKind.pipePipeToken, position, "||", null);
         }
-        _diagnostics.Add($"error bad character input {Current}" );
+        
+       else if (Current == '\'')
+{
+    var start = _position;
+
+    // Move past opening quote
+    Next();
+
+    if (Current == '\0')
+    {
+        _diagnostics.Add("Unterminated char literal.");
+        return new Syntaxtoken(SyntaxKind.badtoken, start, "'", null);
+    }
+
+    var charValue = Current;
+
+    Next();
+
+    if (Current != '\'')
+    {
+        _diagnostics.Add("Char literal must contain exactly one character.");
+        return new Syntaxtoken(SyntaxKind.badtoken, start, _text.Substring(start, _position - start), null);
+    }
+
+    // Move past closing quote
+    Next();
+
+    var text = _text.Substring(start, _position - start);
+
+    return new Syntaxtoken(SyntaxKind.charvaltoken, start, text, charValue);
+}
+
+       
+        _diagnostics.Add($"error bad character input in lexer line 171 {Current}" );
         return new Syntaxtoken(SyntaxKind.badtoken, _position++, _text.Substring(_position-1,1),null );
         
 

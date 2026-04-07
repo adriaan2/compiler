@@ -40,11 +40,12 @@ public class Parser
         return current;
     }
     private Syntaxtoken Current => Peek(0);
-    private Syntaxtoken match(SyntaxKind kind)
+    private Syntaxtoken match(SyntaxKind kind,string printable="")
     {
         if (Current.Kind==kind)
                 return Nexttoken();
-        _diagnostics.Add($"Error unexpected token {Current.Kind}");
+        System.Console.WriteLine(printable);
+        _diagnostics.Add($"Error unexpected token in parser {Current.Kind}" );
         return new Syntaxtoken(kind, Current.POsition, null, null);
     }
     public LiteralExpressionsyntax parse()
@@ -54,6 +55,7 @@ public class Parser
 
     private LiteralExpressionsyntax ParseExpression()
     {
+        System.Console.WriteLine("d");
         if (IsTypeKeyword(Current.Kind))
             return ParseVariableDeclaration();
 
@@ -66,21 +68,21 @@ public class Parser
     private LiteralExpressionsyntax ParseVariableDeclaration()
     {
         var keyword = Nexttoken();
-        var identifier = match(SyntaxKind.identifierToken);
-        var equals = match(SyntaxKind.equalsToken);
+        var identifier = match(SyntaxKind.identifierToken,"identifier");
+        var equals = match(SyntaxKind.equalsToken,"equal");
         var initializer = ParseBinaryExpression();
         return new VariableDeclarationSyntax(keyword, identifier, equals, initializer);
     }
 
     private static bool IsTypeKeyword(SyntaxKind kind)
     {
-        return kind == SyntaxKind.intKeyword || kind == SyntaxKind.boolKeyword;
+        return kind == SyntaxKind.intKeyword || kind == SyntaxKind.boolKeyword||SyntaxKind.charkeyword==kind;
     }
 
     private LiteralExpressionsyntax ParseAssignmentExpression()
     {
         var identifier = match(SyntaxKind.identifierToken);
-        var equals = match(SyntaxKind.equalsToken);
+        var equals = match(SyntaxKind.equalsToken,"equals");
         var expression = ParseBinaryExpression();
         return new AssignmentExpressionSyntax(identifier, equals, expression);
     }
@@ -123,7 +125,7 @@ public class Parser
         {
             var left=Nexttoken();
             var expression=ParseBinaryExpression();
-            var right=match(SyntaxKind.closedparen);
+            var right=match(SyntaxKind.closedparen,"127");
             return new Parenthessese(left, expression,right);
 
         }
@@ -137,7 +139,26 @@ public class Parser
             var identifierToken = Nexttoken();
             return new NameExpressionSyntax(identifierToken);
         }
-        var numberToken =match(SyntaxKind.numberToken);
+        if (Current.Kind==SyntaxKind.charvaltoken)
+        {
+            System.Console.WriteLine("d");
+            var charToken = Nexttoken();
+            var openQuote = new Syntaxtoken(SyntaxKind.badtoken, charToken.POsition, "'", null);
+            var characterText = charToken.Value?.ToString();
+            var characterValue = new Syntaxtoken(
+                SyntaxKind.charvaltoken,
+                charToken.POsition + 1,
+                characterText,
+                charToken.Value);
+            var closeQuote = new Syntaxtoken(
+                SyntaxKind.badtoken,
+                charToken.POsition + (charToken.Text?.Length ?? 0) - 1,
+                "'",
+                   null);
+
+            return new Charsyntax(openQuote, characterValue, closeQuote);
+        }
+        var numberToken =match(SyntaxKind.numberToken,"141");
         return new numberSyntax(numberToken);
     }
 }

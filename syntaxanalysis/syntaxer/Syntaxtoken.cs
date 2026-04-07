@@ -5,7 +5,7 @@ using System.Security;
 
 public enum SyntaxKind
 {
-    chartoken,
+    charkeyword,
     numberToken,
     identifierToken,
     trueKeyword,
@@ -36,7 +36,9 @@ public enum SyntaxKind
     errorexpression,
     bracketexpression,
     unaryexpression,
-    booleanexpression}
+    booleanexpression,
+    charvaltoken
+    }
 
 public class Syntaxtoken: SyntaxNode
 {

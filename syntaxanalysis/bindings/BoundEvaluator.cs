@@ -66,6 +66,10 @@ internal sealed class BoundEvaluator
                     throw new Exception($"Unexpected binary operator {binary.Boundoperatorkind}");
             }
         }
+        if (node is Boundcharexpression charexpression)
+        {
+            return charexpression.Value;
+        }
 
         if (node is BoundVariableexpression variable)
         {
@@ -88,6 +92,7 @@ internal sealed class BoundEvaluator
             _variables[declaration.Variable] = value;
             return value;
         }
+        
 
         throw new Exception($"Unexpected bound node {node.Boundnodekind}");
     }

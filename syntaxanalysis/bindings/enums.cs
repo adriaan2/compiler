@@ -2,6 +2,7 @@
 namespace bindings{
 internal enum Boundnodekind
     {
+        charexpression,
         Unaryexpression,
         Numberexpression,
         Binaryexpression,

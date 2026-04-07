@@ -31,11 +31,14 @@ internal class Binder
                     return Bindassignmentexpression((AssignmentExpressionSyntax)expressionsyntax);
             case SyntaxKind.variabledeclarationexpression:
                     return Bindvariabledeclaration((VariableDeclarationSyntax)expressionsyntax);
-
+            case SyntaxKind.charvaltoken:
+                    return bindcharexpression((Charsyntax) expressionsyntax);
+                  
             default:
              throw new Exception($"unkown syntax{expressionsyntax.Kind}");
         }
     }
+    
 
     private  Boundexpression Bindunarysyntax(UnarySyntax expressionsyntax)
     {
@@ -116,6 +119,7 @@ internal class Binder
         {
             SyntaxKind.intKeyword => typeof(int),
             SyntaxKind.boolKeyword => typeof(bool),
+            SyntaxKind.charkeyword=> typeof(char),
             _ => throw new Exception($"Unexpected type keyword {keywordToken.Kind}")
         };
     }
@@ -171,6 +175,11 @@ internal class Binder
      int value= expressionsyntax.Token.Value is int?(int)expressionsyntax.Token.Value: 0;
      return new BoundNumberexpression(value);
     }
+    private Boundcharexpression bindcharexpression(Charsyntax charsyntax)
+    {
+         var value = charsyntax.CharacterValue.Value is char character ? character : '\0';
+        return new Boundcharexpression(value);
+    }
     private Boundexpression Bindbooleanexpression(BooleanSyntax expressionsyntax)
     {
         bool value = expressionsyntax.KeywordToken.Value is bool booleanValue && booleanValue;
@@ -187,7 +196,7 @@ internal class Binder
             case SyntaxKind.bangToken:
                 return Boundunaryoperatorkind.LogicalNegation;
             default:
-             throw new Exception($"{kind} not a unary operation");
+             throw new Exception($"{kind} not a unary operation in binder.cs line 90" );
         }
     }
 
@@ -222,6 +231,8 @@ internal class Binder
                 || operatorKind == BoundBinaryoperatorkind.LogicalAnd
                 || operatorKind == BoundBinaryoperatorkind.LogicalOr;
         }
+        if (leftType == typeof(char))
+            return operatorKind == BoundBinaryoperatorkind.Equals;
 
         return false;
     }

@@ -1,3 +1,4 @@
+
 namespace syntaxer;
 
 public class Evaluator
@@ -58,7 +59,10 @@ public class Evaluator
             return evaluateexpressionroot(p.Expression);
         }
 
-      
+        if (expression is Charsyntax character)
+        {
+            return character.CharacterValue.Value is char value ? value : '\0';
+        }
 
         throw new Exception($"Unexpected node {expression.Kind}");
     }
