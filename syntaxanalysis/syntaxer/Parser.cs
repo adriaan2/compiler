@@ -67,11 +67,26 @@ public class Parser
 
     private LiteralExpressionsyntax ParseVariableDeclaration()
     {
-        var keyword = Nexttoken();
+        var typeClause = ParseTypeClause();
         var identifier = match(SyntaxKind.identifierToken,"identifier");
         var equals = match(SyntaxKind.equalsToken,"equal");
         var initializer = ParseBinaryExpression();
-        return new VariableDeclarationSyntax(keyword, identifier, equals, initializer);
+        return new VariableDeclarationSyntax(typeClause, identifier, equals, initializer);
+    }
+
+    private TypeClauseSyntax ParseTypeClause()
+    {
+        var keyword = Nexttoken();
+        Syntaxtoken? openBracket = null;
+        Syntaxtoken? closeBracket = null;
+
+        if (Current.Kind == SyntaxKind.openbracket && Peek(1).Kind == SyntaxKind.closebracket)
+        {
+            openBracket = Nexttoken();
+            closeBracket = Nexttoken();
+        }
+
+        return new TypeClauseSyntax(keyword, openBracket, closeBracket);
     }
 
     private static bool IsTypeKeyword(SyntaxKind kind)
@@ -100,7 +115,7 @@ public class Parser
         }
         else
         {
-            left = ParsePrimaryexpression();
+            left = ParsePostfixExpression();
         }
 
         while (true)
@@ -117,10 +132,27 @@ public class Parser
         return left;
     }
 
-   
+    private LiteralExpressionsyntax ParsePostfixExpression()
+    {
+        var left = ParsePrimaryexpression();
+
+        while (Current.Kind == SyntaxKind.openbracket)
+        {
+            var openBracket = Nexttoken();
+            var index = ParseExpression();
+            var closeBracket = match(SyntaxKind.closebracket, "close bracket");
+            left = new ArrayIndexExpressionSyntax(left, openBracket, index, closeBracket);
+        }
+
+        return left;
+    }
 
     private LiteralExpressionsyntax ParsePrimaryexpression()
     {
+        if (Current.Kind == SyntaxKind.openbracket)
+        {
+            return ParseArrayExpression();
+        }
         if (Current.Kind==SyntaxKind.openparen)
         {
             var left=Nexttoken();
@@ -160,5 +192,27 @@ public class Parser
         }
         var numberToken =match(SyntaxKind.numberToken,"141");
         return new numberSyntax(numberToken);
+    }
+
+    private LiteralExpressionsyntax ParseArrayExpression()
+    {
+        var openBracket = match(SyntaxKind.openbracket, "open bracket");
+        var elements = new List<LiteralExpressionsyntax>();
+
+        if (Current.Kind != SyntaxKind.closebracket)
+        {
+            while (true)
+            {
+                elements.Add(ParseExpression());
+
+                if (Current.Kind != SyntaxKind.commaToken)
+                    break;
+
+                Nexttoken();
+            }
+        }
+
+        var closeBracket = match(SyntaxKind.closebracket, "close bracket");
+        return new ArrayExpressionSyntax(openBracket, elements, closeBracket);
     }
 }

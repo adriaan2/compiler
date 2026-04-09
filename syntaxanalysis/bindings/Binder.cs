@@ -1,56 +1,60 @@
-using System.Linq.Expressions;
 using bindings;
 using syntaxer;
+
 internal class Binder
+{
+    private readonly Dictionary<string, VariableSymbol> _variables;
+    private readonly List<string> _diagnostocs = new();
+
+    public IEnumerable<string> Diagnostics => _diagnostocs;
+
+    public Binder(Dictionary<string, VariableSymbol> variables)
     {
-        private readonly Dictionary<string, VariableSymbol> _variables;
-        private readonly List<string> _diagnostocs=new();
-        public IEnumerable<string> Diagnostics=>_diagnostocs;
-        public Binder(Dictionary<string, VariableSymbol> variables)
-        {
-            _variables = variables;
-        }
-        public Boundexpression Bind(LiteralExpressionsyntax expressionsyntax)
+        _variables = variables;
+    }
+
+    public Boundexpression Bind(LiteralExpressionsyntax expressionsyntax)
     {
         switch (expressionsyntax.Kind)
         {
-            
             case SyntaxKind.numberexpression:
-                    return Bindnumberexpression((syntaxer.numberSyntax) expressionsyntax);
+                return Bindnumberexpression((numberSyntax)expressionsyntax);
             case SyntaxKind.booleanexpression:
-                    return Bindbooleanexpression((BooleanSyntax)expressionsyntax);
+                return Bindbooleanexpression((BooleanSyntax)expressionsyntax);
             case SyntaxKind.binaryexpression:
-                    return Bindbinarysyntax((BynarySyntax)expressionsyntax);
+                return Bindbinarysyntax((BynarySyntax)expressionsyntax);
             case SyntaxKind.unaryexpression:
-                    return Bindunarysyntax((UnarySyntax) expressionsyntax);
+                return Bindunarysyntax((UnarySyntax)expressionsyntax);
             case SyntaxKind.bracketexpression:
-                    return Bindparenthesizedsyntax((Parenthessese)expressionsyntax);
+                return Bindparenthesizedsyntax((Parenthessese)expressionsyntax);
             case SyntaxKind.nameexpression:
-                    return Bindnameexpression((NameExpressionSyntax)expressionsyntax);
+                return Bindnameexpression((NameExpressionSyntax)expressionsyntax);
             case SyntaxKind.assignmentexpression:
-                    return Bindassignmentexpression((AssignmentExpressionSyntax)expressionsyntax);
+                return Bindassignmentexpression((AssignmentExpressionSyntax)expressionsyntax);
             case SyntaxKind.variabledeclarationexpression:
-                    return Bindvariabledeclaration((VariableDeclarationSyntax)expressionsyntax);
+                return Bindvariabledeclaration((VariableDeclarationSyntax)expressionsyntax);
             case SyntaxKind.charvaltoken:
-                    return bindcharexpression((Charsyntax) expressionsyntax);
-                  
+                return bindcharexpression((Charsyntax)expressionsyntax);
+            case SyntaxKind.arrayexpression:
+                return Bindarrayexpression((ArrayExpressionSyntax)expressionsyntax);
+            case SyntaxKind.arrayindexexpression:
+                return Bindarrayindexexpression((ArrayIndexExpressionSyntax)expressionsyntax);
             default:
-             throw new Exception($"unkown syntax{expressionsyntax.Kind}");
+                throw new Exception($"unkown syntax{expressionsyntax.Kind}");
         }
     }
-    
 
-    private  Boundexpression Bindunarysyntax(UnarySyntax expressionsyntax)
+    private Boundexpression Bindunarysyntax(UnarySyntax expressionsyntax)
     {
-       var Boundoperand= Bind(expressionsyntax.Operand);
-       var Boundoperatorkind=bindunaryoperatorkind(expressionsyntax.OperatorToken.Kind);
-       if (!IsValidUnaryOperator(Boundoperatorkind, Boundoperand.Type))
-       {
-            _diagnostocs.Add($"Unary operator '{expressionsyntax.OperatorToken.Text}' is not defined for type {Boundoperand.Type.Name}");
-            return Boundoperand;
-       }
-       return new Boundunaryexpression(Boundoperatorkind, Boundoperand);
+        var boundOperand = Bind(expressionsyntax.Operand);
+        var boundOperatorKind = bindunaryoperatorkind(expressionsyntax.OperatorToken.Kind);
+        if (!IsValidUnaryOperator(boundOperatorKind, boundOperand.Type))
+        {
+            _diagnostocs.Add($"Unary operator '{expressionsyntax.OperatorToken.Text}' is not defined for type {boundOperand.Type.Name}");
+            return boundOperand;
+        }
 
+        return new Boundunaryexpression(boundOperatorKind, boundOperand);
     }
 
     private Boundexpression Bindparenthesizedsyntax(Parenthessese expressionsyntax)
@@ -81,9 +85,9 @@ internal class Binder
             return boundExpression;
         }
 
-        if (variable.Type != boundExpression.Type)
+        if (!AreTypesCompatible(variable.Type, variable.ElementType, boundExpression))
         {
-            _diagnostocs.Add($"Cannot assign value of type {boundExpression.Type.Name} to variable '{name}' of type {variable.Type.Name}.");
+            _diagnostocs.Add($"Cannot assign value of type {GetDisplayTypeName(boundExpression.Type, GetArrayElementType(boundExpression))} to variable '{name}' of type {GetDisplayTypeName(variable.Type, variable.ElementType)}.");
             return boundExpression;
         }
 
@@ -94,7 +98,7 @@ internal class Binder
     {
         var name = expressionsyntax.Identifier.Text ?? string.Empty;
         var initializer = Bind(expressionsyntax.Initializer);
-        var variableType = BindTypeClause(expressionsyntax.Keyword);
+        var (variableType, elementType) = BindTypeClause(expressionsyntax.TypeClause);
 
         if (_variables.ContainsKey(name))
         {
@@ -102,101 +106,158 @@ internal class Binder
             return initializer;
         }
 
-        if (initializer.Type != variableType)
+        if (!AreTypesCompatible(variableType, elementType, initializer))
         {
-            _diagnostocs.Add($"Variable '{name}' must be of type {variableType.Name}.");
+            _diagnostocs.Add($"Variable '{name}' must be of type {GetDisplayTypeName(variableType, elementType)}.");
             return initializer;
         }
 
-        var variable = new VariableSymbol(name, variableType);
+        var variable = new VariableSymbol(name, variableType, elementType);
         _variables.Add(name, variable);
         return new BoundVariabledeclarationexpression(variable, initializer);
     }
 
-    private static Type BindTypeClause(Syntaxtoken keywordToken)
+    private static (Type Type, Type? ElementType) BindTypeClause(TypeClauseSyntax typeClause)
     {
-        return keywordToken.Kind switch
+        var baseType = typeClause.Keyword.Kind switch
         {
             SyntaxKind.intKeyword => typeof(int),
             SyntaxKind.boolKeyword => typeof(bool),
-            SyntaxKind.charkeyword=> typeof(char),
-            _ => throw new Exception($"Unexpected type keyword {keywordToken.Kind}")
+            SyntaxKind.charkeyword => typeof(char),
+            _ => throw new Exception($"Unexpected type keyword {typeClause.Keyword.Kind}")
         };
-    }
 
-   
+        if (typeClause.IsArray)
+            return (typeof(ArrayValue), baseType);
+
+        return (baseType, null);
+    }
 
     private Boundexpression Bindbinarysyntax(BynarySyntax expressionsyntax)
     {
-        var left= Bind(expressionsyntax.Left);
-        var right=Bind(expressionsyntax.Right);
-       
+        var left = Bind(expressionsyntax.Left);
+        var right = Bind(expressionsyntax.Right);
 
-       var Boundoperatorkind=bindbinaryoperatorkind(expressionsyntax.OperatorToken.Kind);
-       if (!IsValidBinaryOperator(Boundoperatorkind, left.Type, right.Type))
-       {
+        var boundOperatorKind = bindbinaryoperatorkind(expressionsyntax.OperatorToken.Kind);
+        if (!IsValidBinaryOperator(boundOperatorKind, left.Type, right.Type))
+        {
             _diagnostocs.Add($"Binary operator '{expressionsyntax.OperatorToken.Text}' is not defined for types {left.Type.Name} and {right.Type.Name}");
             return left;
-       }
-       
-       return new BoundBinaryexpression(left,Boundoperatorkind,right);
+        }
+
+        return new BoundBinaryexpression(left, boundOperatorKind, right);
+    }
+
+    private Boundexpression Bindarrayexpression(ArrayExpressionSyntax expressionsyntax)
+    {
+        var elements = expressionsyntax.Elements.Select(Bind).ToArray();
+        if (elements.Length == 0)
+        {
+            _diagnostocs.Add("Array literals must contain at least one element.");
+            return new BoundArrayexpression(typeof(object), Array.Empty<Boundexpression>());
+        }
+
+        var elementType = elements[0].Type;
+        var arrayElementType = GetArrayElementType(elements[0]);
+
+        for (var i = 1; i < elements.Length; i++)
+        {
+            if (!HaveSameType(elements[0], elements[i]))
+            {
+                _diagnostocs.Add("All array literal elements must have the same type.");
+                return elements[0];
+            }
+        }
+
+        if (elementType == typeof(ArrayValue) && arrayElementType is null)
+        {
+            _diagnostocs.Add("Array literal element type could not be determined.");
+            return elements[0];
+        }
+
+        return new BoundArrayexpression(elementType == typeof(ArrayValue) ? arrayElementType! : elementType, elements);
+    }
+
+    private Boundexpression Bindarrayindexexpression(ArrayIndexExpressionSyntax expressionsyntax)
+    {
+        var array = Bind(expressionsyntax.Target);
+        var index = Bind(expressionsyntax.Index);
+
+        if (array.Type != typeof(ArrayValue))
+        {
+            _diagnostocs.Add("Indexing is only supported on arrays.");
+            return array;
+        }
+
+        if (index.Type != typeof(int))
+        {
+            _diagnostocs.Add("Array indexes must be of type Int32.");
+            return array;
+        }
+
+        var elementType = GetArrayElementType(array);
+        if (elementType is null)
+        {
+            _diagnostocs.Add("Array element type could not be determined.");
+            return array;
+        }
+
+        return new BoundArrayindexexpression(array, index, elementType);
     }
 
     private BoundBinaryoperatorkind bindbinaryoperatorkind(SyntaxKind kind)
     {
-       
-        
         switch (kind)
         {
             case SyntaxKind.plusToken:
-                    return BoundBinaryoperatorkind.addition;
+                return BoundBinaryoperatorkind.addition;
             case SyntaxKind.minusToken:
-                    return BoundBinaryoperatorkind.subtraction;
+                return BoundBinaryoperatorkind.subtraction;
             case SyntaxKind.timestoken:
-                    return BoundBinaryoperatorkind.times;
+                return BoundBinaryoperatorkind.times;
             case SyntaxKind.slashtoken:
-                    return BoundBinaryoperatorkind.division;
+                return BoundBinaryoperatorkind.division;
             case SyntaxKind.equalsEqualsToken:
-                    return BoundBinaryoperatorkind.Equals;
+                return BoundBinaryoperatorkind.Equals;
             case SyntaxKind.ampersandAmpersandToken:
-                    return BoundBinaryoperatorkind.LogicalAnd;
+                return BoundBinaryoperatorkind.LogicalAnd;
             case SyntaxKind.pipePipeToken:
-                    return BoundBinaryoperatorkind.LogicalOr;
-            
+                return BoundBinaryoperatorkind.LogicalOr;
             default:
-
-             throw new Exception($"unexpected binary syntax{kind}");
+                throw new Exception($"unexpected binary syntax{kind}");
         }
     }
 
     private Boundexpression Bindnumberexpression(numberSyntax expressionsyntax)
     {
-        
-     int value= expressionsyntax.Token.Value is int?(int)expressionsyntax.Token.Value: 0;
-     return new BoundNumberexpression(value);
+        int value = expressionsyntax.Token.Value is int ? (int)expressionsyntax.Token.Value : 0;
+        return new BoundNumberexpression(value);
     }
+
     private Boundcharexpression bindcharexpression(Charsyntax charsyntax)
     {
-         var value = charsyntax.CharacterValue.Value is char character ? character : '\0';
+        var value = charsyntax.CharacterValue.Value is char character ? character : '\0';
         return new Boundcharexpression(value);
     }
+
     private Boundexpression Bindbooleanexpression(BooleanSyntax expressionsyntax)
     {
         bool value = expressionsyntax.KeywordToken.Value is bool booleanValue && booleanValue;
         return new BoundBooleanexpression(value);
     }
-     private Boundunaryoperatorkind  bindunaryoperatorkind(SyntaxKind kind)
+
+    private Boundunaryoperatorkind bindunaryoperatorkind(SyntaxKind kind)
     {
         switch (kind)
         {
             case SyntaxKind.plusToken:
-                    return Boundunaryoperatorkind.Identity;
+                return Boundunaryoperatorkind.Identity;
             case SyntaxKind.minusToken:
                 return Boundunaryoperatorkind.Negation;
             case SyntaxKind.bangToken:
                 return Boundunaryoperatorkind.LogicalNegation;
             default:
-             throw new Exception($"{kind} not a unary operation in binder.cs line 90" );
+                throw new Exception($"{kind} not a unary operation in binder.cs line 90");
         }
     }
 
@@ -231,9 +292,52 @@ internal class Binder
                 || operatorKind == BoundBinaryoperatorkind.LogicalAnd
                 || operatorKind == BoundBinaryoperatorkind.LogicalOr;
         }
+
         if (leftType == typeof(char))
             return operatorKind == BoundBinaryoperatorkind.Equals;
 
         return false;
+    }
+
+    private static bool AreTypesCompatible(Type declaredType, Type? declaredElementType, Boundexpression expression)
+    {
+        if (declaredType != expression.Type)
+            return false;
+
+        if (declaredType != typeof(ArrayValue))
+            return true;
+
+        return declaredElementType == GetArrayElementType(expression);
+    }
+
+    private static bool HaveSameType(Boundexpression left, Boundexpression right)
+    {
+        if (left.Type != right.Type)
+            return false;
+
+        if (left.Type != typeof(ArrayValue))
+            return true;
+
+        return GetArrayElementType(left) == GetArrayElementType(right);
+    }
+
+    private static Type? GetArrayElementType(Boundexpression expression)
+    {
+        return expression switch
+        {
+            BoundArrayexpression arrayExpression => arrayExpression.ElementType,
+            BoundVariableexpression variableExpression => variableExpression.Variable.ElementType,
+            BoundVariabledeclarationexpression declarationExpression => declarationExpression.Variable.ElementType,
+            BoundAssignmentexpression assignmentExpression => assignmentExpression.Variable.ElementType,
+            _ => null
+        };
+    }
+
+    private static string GetDisplayTypeName(Type type, Type? elementType)
+    {
+        if (type == typeof(ArrayValue) && elementType is not null)
+            return $"{elementType.Name}[]";
+
+        return type.Name;
     }
 }

@@ -5,8 +5,13 @@ using System.Security;
 
 public enum SyntaxKind
 {
+    arraytoken,
+    iftoken,
     charkeyword,
     numberToken,
+    openbracket,
+    closebracket,
+    commaToken,
     identifierToken,
     trueKeyword,
     falseKeyword,
@@ -35,9 +40,12 @@ public enum SyntaxKind
     timestoken,
     errorexpression,
     bracketexpression,
+    typeclause,
     unaryexpression,
     booleanexpression,
-    charvaltoken
+    charvaltoken,
+    arrayexpression,
+    arrayindexexpression
     }
 
 public class Syntaxtoken: SyntaxNode
@@ -70,6 +78,33 @@ public abstract class SyntaxNode
 public abstract class LiteralExpressionsyntax : SyntaxNode
 {
 
+}
+sealed class TypeClauseSyntax : SyntaxNode
+{
+    public TypeClauseSyntax(Syntaxtoken keyword, Syntaxtoken? openBracketToken = null, Syntaxtoken? closeBracketToken = null)
+    {
+        Keyword = keyword;
+        OpenBracketToken = openBracketToken;
+        CloseBracketToken = closeBracketToken;
+    }
+
+    public Syntaxtoken Keyword { get; }
+    public Syntaxtoken? OpenBracketToken { get; }
+    public Syntaxtoken? CloseBracketToken { get; }
+    public bool IsArray => OpenBracketToken is not null && CloseBracketToken is not null;
+
+    public override SyntaxKind Kind => SyntaxKind.typeclause;
+
+    public override IEnumerable<SyntaxNode> getchildren()
+    {
+        yield return Keyword;
+
+        if (OpenBracketToken is not null)
+            yield return OpenBracketToken;
+
+        if (CloseBracketToken is not null)
+            yield return CloseBracketToken;
+    }
 }
 sealed class numberSyntax : LiteralExpressionsyntax
 {
@@ -141,15 +176,15 @@ sealed class AssignmentExpressionSyntax : LiteralExpressionsyntax
 
 sealed class VariableDeclarationSyntax : LiteralExpressionsyntax
 {
-    public VariableDeclarationSyntax(Syntaxtoken keyword, Syntaxtoken identifier, Syntaxtoken equalsToken, LiteralExpressionsyntax initializer)
+    public VariableDeclarationSyntax(TypeClauseSyntax typeClause, Syntaxtoken identifier, Syntaxtoken equalsToken, LiteralExpressionsyntax initializer)
     {
-        Keyword = keyword;
+        TypeClause = typeClause;
         Identifier = identifier;
         EqualsToken = equalsToken;
         Initializer = initializer;
     }
 
-    public Syntaxtoken Keyword { get; }
+    public TypeClauseSyntax TypeClause { get; }
     public Syntaxtoken Identifier { get; }
     public Syntaxtoken EqualsToken { get; }
     public LiteralExpressionsyntax Initializer { get; }
@@ -158,7 +193,7 @@ sealed class VariableDeclarationSyntax : LiteralExpressionsyntax
 
     public override IEnumerable<SyntaxNode> getchildren()
     {
-        yield return Keyword;
+        yield return TypeClause;
         yield return Identifier;
         yield return EqualsToken;
         yield return Initializer;
@@ -204,3 +239,54 @@ sealed class ErrorSyntax : LiteralExpressionsyntax
     }
 }
 
+sealed class ArrayExpressionSyntax : LiteralExpressionsyntax
+{
+    public ArrayExpressionSyntax(Syntaxtoken openBracketToken, IReadOnlyList<LiteralExpressionsyntax> elements, Syntaxtoken closeBracketToken)
+    {
+        OpenBracketToken = openBracketToken;
+        Elements = elements;
+        CloseBracketToken = closeBracketToken;
+    }
+
+    public Syntaxtoken OpenBracketToken { get; }
+    public IReadOnlyList<LiteralExpressionsyntax> Elements { get; }
+    public Syntaxtoken CloseBracketToken { get; }
+
+    public override SyntaxKind Kind => SyntaxKind.arrayexpression;
+
+    public override IEnumerable<SyntaxNode> getchildren()
+    {
+        yield return OpenBracketToken;
+
+        foreach (var element in Elements)
+            yield return element;
+
+        yield return CloseBracketToken;
+    }
+}
+
+sealed class ArrayIndexExpressionSyntax : LiteralExpressionsyntax
+{
+    public ArrayIndexExpressionSyntax(LiteralExpressionsyntax target, Syntaxtoken openBracketToken, LiteralExpressionsyntax index, Syntaxtoken closeBracketToken)
+    {
+        Target = target;
+        OpenBracketToken = openBracketToken;
+        Index = index;
+        CloseBracketToken = closeBracketToken;
+    }
+
+    public LiteralExpressionsyntax Target { get; }
+    public Syntaxtoken OpenBracketToken { get; }
+    public LiteralExpressionsyntax Index { get; }
+    public Syntaxtoken CloseBracketToken { get; }
+
+    public override SyntaxKind Kind => SyntaxKind.arrayindexexpression;
+
+    public override IEnumerable<SyntaxNode> getchildren()
+    {
+        yield return Target;
+        yield return OpenBracketToken;
+        yield return Index;
+        yield return CloseBracketToken;
+    }
+}

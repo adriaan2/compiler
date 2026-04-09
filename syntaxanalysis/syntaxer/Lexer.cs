@@ -58,8 +58,10 @@ public class Lexer
 
             var length = _position - start;
             var text = _text.Substring(start, length);
+            
             var kind = text switch
             {
+                
                 "char"=> SyntaxKind.charkeyword,
                 "true" => SyntaxKind.trueKeyword,
                 "false" => SyntaxKind.falseKeyword,
@@ -116,6 +118,18 @@ public class Lexer
         {
         return new Syntaxtoken(SyntaxKind.plusToken, _position++, "+", null);
                         
+        }
+        else if (Current=='[')
+        {
+            return new Syntaxtoken(SyntaxKind.openbracket, _position++, "[", null);
+        }
+        else if (Current==']')
+        {
+            return new Syntaxtoken(SyntaxKind.closebracket, _position++, "]", null);
+        }
+        else if (Current==',')
+        {
+            return new Syntaxtoken(SyntaxKind.commaToken, _position++, ",", null);
         }
         else if (Current=='=' && Lookahead!='=')
         {

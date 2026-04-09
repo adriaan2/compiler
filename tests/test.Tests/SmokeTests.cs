@@ -102,6 +102,38 @@ public class SmokeTests
     }
 
     [Fact]
+    public void Evaluate_IntArrayDeclaration_ReturnsArrayValue()
+    {
+        var result = EvaluateWithBinding("int[] numbers = [1, 2, 3]");
+
+        Assert.Equal("[1, 2, 3]", result.ToString());
+    }
+
+    [Fact]
+    public void Evaluate_ArrayIndex_ReturnsExpectedElement()
+    {
+        var variables = new Dictionary<VariableSymbol, object>();
+        var variableSymbols = new Dictionary<string, VariableSymbol>();
+
+        _ = EvaluateWithBinding("int[] numbers = [4, 5, 6]", variableSymbols, variables);
+        var result = EvaluateWithBinding("numbers[1]", variableSymbols, variables);
+
+        Assert.Equal(5, result);
+    }
+
+    [Fact]
+    public void Evaluate_CharArrayIndex_ReturnsExpectedElement()
+    {
+        var variables = new Dictionary<VariableSymbol, object>();
+        var variableSymbols = new Dictionary<string, VariableSymbol>();
+
+        _ = EvaluateWithBinding("char[] letters = ['a', 'b', 'c']", variableSymbols, variables);
+        var result = EvaluateWithBinding("letters[2]", variableSymbols, variables);
+
+        Assert.Equal('c', result);
+    }
+
+    [Fact]
     public void Bind_BoolDeclarationWithIntInitializer_ReportsDiagnostic()
     {
         var parser = new Parser("bool b = 5");
@@ -146,6 +178,75 @@ public class SmokeTests
 
         if (!binder.Diagnostics.Any())
             throw new XunitException("Expected a binder diagnostic for '1 == true', but the binder reported none.");
+    }
+
+    [Fact]
+    public void Bind_ArrayLiteralWithMixedTypes_ReportsDiagnostic()
+    {
+        var parser = new Parser("[1, true]");
+        var syntax = parser.parse();
+        var binder = new Binder(new Dictionary<string, VariableSymbol>());
+
+        _ = binder.Bind(syntax);
+
+        if (parser.Diagnostics.Any())
+            throw new XunitException($"Expected no parser diagnostics for '[1, true]', but got: {string.Join(", ", parser.Diagnostics)}");
+
+        Assert.Contains(binder.Diagnostics, diagnostic => diagnostic.Contains("same type"));
+    }
+
+    [Fact]
+    public void Bind_ArrayDeclarationWithWrongElementType_ReportsDiagnostic()
+    {
+        var parser = new Parser("bool[] flags = [true, false, true]");
+        var syntax = parser.parse();
+        var binder = new Binder(new Dictionary<string, VariableSymbol>());
+
+        _ = binder.Bind(syntax);
+
+        if (parser.Diagnostics.Any())
+            throw new XunitException($"Expected no parser diagnostics, got: {string.Join(", ", parser.Diagnostics)}");
+
+        Assert.DoesNotContain(binder.Diagnostics, diagnostic => diagnostic.Contains("must be of type"));
+
+        var invalidParser = new Parser("bool[] flags = [1, 2]");
+        var invalidSyntax = invalidParser.parse();
+        var invalidBinder = new Binder(new Dictionary<string, VariableSymbol>());
+
+        _ = invalidBinder.Bind(invalidSyntax);
+
+        if (invalidParser.Diagnostics.Any())
+            throw new XunitException($"Expected no parser diagnostics, got: {string.Join(", ", invalidParser.Diagnostics)}");
+
+        Assert.Contains(invalidBinder.Diagnostics, diagnostic => diagnostic.Contains("must be of type Boolean[]"));
+    }
+
+    [Fact]
+    public void Bind_ArrayIndexWithNonIntegerExpression_ReportsDiagnostic()
+    {
+        var variables = new Dictionary<string, VariableSymbol>();
+        var binder = new Binder(variables);
+
+        _ = binder.Bind(new Parser("int[] numbers = [1, 2]").parse());
+
+        var parser = new Parser("numbers[true]");
+        var syntax = parser.parse();
+        var bound = binder.Bind(syntax);
+
+        Assert.NotNull(bound);
+        Assert.Contains(binder.Diagnostics, diagnostic => diagnostic.Contains("Array indexes must be of type Int32"));
+    }
+
+    [Fact]
+    public void Evaluate_ArrayIndexOutOfBounds_Throws()
+    {
+        var variables = new Dictionary<VariableSymbol, object>();
+        var variableSymbols = new Dictionary<string, VariableSymbol>();
+
+        _ = EvaluateWithBinding("int[] numbers = [1, 2]", variableSymbols, variables);
+
+        var exception = Assert.Throws<Exception>(() => EvaluateWithBinding("numbers[5]", variableSymbols, variables));
+        Assert.Contains("out of bounds", exception.Message);
     }
 
     private static object EvaluateWithBinding(

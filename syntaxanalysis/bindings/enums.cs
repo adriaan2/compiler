@@ -3,6 +3,8 @@ namespace bindings{
 internal enum Boundnodekind
     {
         charexpression,
+        Arrayexpression,
+        Arrayindexexpression,
         Unaryexpression,
         Numberexpression,
         Binaryexpression,

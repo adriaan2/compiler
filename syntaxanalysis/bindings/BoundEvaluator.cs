@@ -24,6 +24,15 @@ internal sealed class BoundEvaluator
         if (node is BoundBooleanexpression boolean)
             return boolean.Value;
 
+        if (node is BoundArrayexpression arrayExpression)
+        {
+            var elements = arrayExpression.Elements
+                .Select(EvaluateExpression)
+                .ToArray();
+
+            return new ArrayValue(arrayExpression.ElementType, elements);
+        }
+
         if (node is Boundunaryexpression unary)
         {
             var operand = EvaluateExpression(unary.Operand);
@@ -69,6 +78,17 @@ internal sealed class BoundEvaluator
         if (node is Boundcharexpression charexpression)
         {
             return charexpression.Value;
+        }
+
+        if (node is BoundArrayindexexpression arrayIndex)
+        {
+            var array = (ArrayValue)EvaluateExpression(arrayIndex.Array);
+            var index = (int)EvaluateExpression(arrayIndex.Index);
+
+            if (index < 0 || index >= array.Length)
+                throw new Exception($"Array index '{index}' is out of bounds for length {array.Length}.");
+
+            return array.Elements[index];
         }
 
         if (node is BoundVariableexpression variable)
